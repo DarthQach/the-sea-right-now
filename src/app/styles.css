@@ -180,6 +180,20 @@ a {
   transition: opacity var(--motion-slow) var(--ease);
 }
 
+/* A side panel owns its corner while it is open; whatever normally sits there
+   steps out of the way rather than showing through it. */
+.chrome[data-side-panel='right'] .slot-top-right,
+.chrome[data-side-panel='right'] .slot-bottom-right {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.chrome[data-side-panel='left'] .slot-top-left,
+.chrome[data-side-panel='left'] .slot-bottom-left {
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* Hidden means hidden, except for an almost invisible station name and age —
    which is the one thing you still want to know while watching the water. */
 .chrome[data-hidden='true'] > *:not(.slot-top-left) {

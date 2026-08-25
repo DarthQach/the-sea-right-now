@@ -248,6 +248,7 @@ export function App() {
         className="chrome"
         data-hidden={prefs.chromeHidden ? 'true' : 'false'}
         data-pointer-active={pointerAwake ? 'true' : 'false'}
+        data-side-panel={settingsOpen || urlState.about ? 'right' : panelOpen ? 'left' : 'none'}
       >
         {mode === 'sea' && stationId !== null ? (
           <SeaChrome
