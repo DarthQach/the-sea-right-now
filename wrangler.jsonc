@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "the-sea-right-now",
+  "main": "./src/worker/index.ts",
+  "compatibility_date": "2026-08-25",
+  "observability": { "enabled": true },
+  "routes": [{ "pattern": "sea.vicaai.dev", "custom_domain": true }],
+  "assets": {
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "vars": {
+    // Not a secret. Identifies this project to NOAA NDBC with a contact address,
+    // as NDBC asks of automated clients.
+    "NDBC_USER_AGENT": "TheSeaRightNow/1.0 (+https://sea.vicaai.dev)"
+  }
+}

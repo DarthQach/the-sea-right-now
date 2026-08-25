@@ -1,0 +1,7 @@
+# Copy to .dev.vars for local development. .dev.vars is gitignored.
+# This project has no API keys — NOAA NDBC requires none.
+#
+# Identifies this client to NDBC. Not a secret; the deployed value lives in
+# wrangler.jsonc under "vars". Override locally if you want your own contact
+# address in outbound requests during development.
+NDBC_USER_AGENT="TheSeaRightNow/1.0 (+https://sea.vicaai.dev)"
