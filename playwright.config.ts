@@ -12,9 +12,15 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 2 : 4,
+  // One worker in CI: a two-core runner with no GPU has two of these pages
+  // fighting over the same software rasteriser, and each one is slower for it.
+  workers: process.env.CI ? 1 : 4,
   reporter: process.env.CI ? [['github'], ['list']] : [['list']],
-  timeout: 45_000,
+  // A CI runner boots this page several times slower than a developer machine —
+  // no GPU, and every shader compiled on the CPU. The budget for the tier is
+  // still 120 seconds; this is only the ceiling on one test before it is
+  // declared hung.
+  timeout: process.env.CI ? 90_000 : 45_000,
   expect: { timeout: 15_000 },
   use: {
     baseURL,
