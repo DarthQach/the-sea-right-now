@@ -58,3 +58,74 @@ applied to every numeric surface. SF Pro, Segoe UI and Roboto all honour
 the Playwright smoke script** so milestone 1 can prove the three commands are
 wired before any test exists. Both are removed once the first test in each tier
 lands, so a broken include glob cannot pass silently.
+
+---
+
+## Milestone 2 — journey 1: see one station's water
+
+**`Reading.fieldSources` uses all three states, and `fieldObservedAt` was added.**
+NDBC publishes wind every ten minutes but waves only two or three times an hour,
+so the newest row of `realtime2/{id}.txt` almost always has `MM` in the wave
+columns. Taking only that row would show an em-dash for wave height on most
+stations most of the time, which is true of the row but false about the buoy. So
+each field takes the newest non-`MM` value within a three-hour window and is
+marked `measured` when it came from the `observedAt` row and `derived` when it
+was carried forward; `fieldObservedAt` records when each value was actually
+taken. Beyond three hours the value is stale enough that `absent` is the more
+honest answer.
+
+**FFT cascade patch sizes are 1024 m, 96 m and 12 m, not 250 m, 17 m and 5 m.**
+`docs/04-build-prompt.md` describes "three cascades covering roughly 250 m, 17 m
+and 5 m wavelength bands". A patch can only carry wavelengths up to its own size,
+and a 14-second swell is about 300 m long, so a 250 m patch would lose the swell
+entirely — it would fall below the grid's fundamental. The patch sizes above
+produce bands of wavelength above 40 m, 3.5–40 m, and below 3.5 m, which is what
+the prompt describes. Verified in `tests/unit/fft-ocean.test.ts`.
+
+**The spectrum has two components, not one.** A single JONSWAP peak at the
+reported dominant period renders a mirror on a swell day: 1.2 m at 15 seconds is
+a surface slope of about 0.003. Real seas carry a short wind sea on top of the
+long swell, and NDBC publishes that split directly in the `.spec` file for
+spectral stations (`SwH`/`SwP`/`SwD` and `WWH`/`WWP`). Where `.spec` exists the
+split is used verbatim and marked `measured`; elsewhere the wind sea is estimated
+from wind speed with Pierson–Moskowitz, capped so it can never claim more energy
+than the buoy measured, and marked `derived`. Both components are normalised to
+their own significant wave height, so the two together reproduce the reported
+total exactly. Recorded in `docs/changes.md` as well, because a visitor notices.
+
+**The spectrum normalisation is analytic, not tuned.** The GPU fills each grid
+cell with `scale x shape x spread x (domega/dk)/k x dk^2`, and every cell
+contributes twice. `spectrumEnergyScale` closes that to exactly `(Hs/4)^2` by
+dividing out the two integrals on the CPU. Measured against a GPU buffer readback
+during the build: cascade variances came out at 97%, 102% and 93% of prediction.
+
+**The looping frequency quantisation applies to the phase only.** Snapping omega
+to a multiple of `2*pi/240s` makes the surface periodic in time. Feeding the
+snapped value into the spectrum as well shifts cells off a narrow swell peak,
+which came out five times too flat before it was separated.
+
+**Panel opacity is 86%, not the 72% in the design direction.** The same document
+requires body text to hold 4.5:1 against its panel "over both the brightest and
+darkest water the renderer produces". Over foam at 72%, secondary text
+(`#8FA3B0`) falls to roughly 1.4:1. The interface constraint wins over the
+palette number; the design explicitly says the scrim must be opaque enough for
+the ratio to hold.
+
+**The Gerstner fallback ocean was built in milestone 2, not milestone 6.** The
+verification strategy requires every smoke test to run against `?forceWebGL=1`,
+so journey 1 could not be tested at all without it. Milestone 6 still owns
+capability detection, the reduced-capability notice and its dismissed state.
+
+**The canvas element is created inside the effect, not rendered by React.** A
+canvas hands out exactly one graphics context in its lifetime. Under StrictMode
+the effect mounts, tears down and remounts, so a React-owned canvas reaches the
+second renderer already dead — which showed up as a white frame and a "WebGL
+device lost" on the fallback path.
+
+**`/` renders the sea view for the last or default station.** The globe lands in
+milestone 4 and takes over that route then. This is real water for a real
+station, not a placeholder.
+
+**The first sea-state transition is 2.5 seconds; later ones are 8.** Readings land
+tens of minutes apart and should ease, but the product promises real,
+reading-driven water within about three seconds of a cold load.

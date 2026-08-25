@@ -16,7 +16,7 @@
     "test:unit": "vitest run --project unit",
     "test:worker": "vitest run --project worker",
     "verify": "node scripts/parallel.mjs \"tsc -p tsconfig.app.json --noEmit\" \"tsc -p tsconfig.worker.json --noEmit\" \"tsc -p tsconfig.node.json --noEmit\" \"eslint .\" \"vitest run --project unit\"",
-    "smoke": "playwright test --project=smoke --pass-with-no-tests",
+    "smoke": "playwright test --project=smoke",
     "smoke:webgpu": "playwright test --project=webgpu",
     "verify:all": "node scripts/verify-all.mjs",
     "snapshot:stations": "node scripts/build-station-snapshot.mjs"
