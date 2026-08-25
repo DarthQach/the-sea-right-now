@@ -312,7 +312,10 @@ Constraints: every numeric field is nullable — a large share of stations repor
 wind but not waves, or the reverse. `MM` maps to `null` and to
 `fieldSources[field] = 'absent'`, never to zero. A `Reading` with
 `waveHeightM === null` **and** `windSpeedMs === null` is treated as *no usable
-data* and triggers the nearest-live-station offer.
+data* and triggers the nearest-live-station offer. That nearest station is
+computed **on the page**, from the station index already in memory, by
+great-circle distance filtered to stations whose `met` flag is true — there is no
+server call and no second endpoint for it.
 
 ### `SpectrumParams` — derived on the page, never stored
 
