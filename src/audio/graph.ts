@@ -10,6 +10,7 @@
  */
 import type { SpectrumParams } from '../lib/spectrum'
 import { LiteralMapping } from './literal'
+import { claimMediaAudioSession } from './session'
 import { TunedMapping } from './tuned'
 
 export type AudioMode = 'literal' | 'tuned'
@@ -62,6 +63,10 @@ export class SeaAudio {
     this.muted = muted
 
     if (this.context === null) {
+      // Before a single sample exists, or iOS plays the whole thing as ambience
+      // and the Ring/Silent switch decides whether anyone hears the sea.
+      claimMediaAudioSession()
+
       this.context = new AudioContext({ latencyHint: 'playback' })
       this.master = this.context.createGain()
       this.master.gain.value = 0

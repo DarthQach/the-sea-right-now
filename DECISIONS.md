@@ -324,3 +324,19 @@ height and the interface pads itself down by that much.
 lines and dragged the provenance glyph onto the second, knocking that column's
 number out of line with the others. "Period" says the same thing in one line; the
 full wording stays in the DOM for screen readers.
+
+**Web Audio on an iPhone is ambience until the page says otherwise.** The sound
+worked everywhere except the device it was most likely to be heard on, and the
+symptom was total: no sound in Safari or Chrome on iOS — the same engine, which
+is what pointed at a platform policy rather than a browser bug — while the graph
+ran, the context reported `running`, and the level meter moved. WebKit assigns a
+page that plays nothing but synthesised Web Audio the *ambient* audio session
+category, and ambient audio is silenced outright by the Ring/Silent switch and
+follows the ringer volume rather than the media volume. Because nothing here is a
+recording, the page never qualified for the `playback` category that an `<audio>`
+element would have been given for free. `navigator.audioSession.type =
+'playback'`, claimed on the gesture that creates the context, is the entire fix;
+`src/audio/session.ts` is where it lives and `tests/unit/audio-session.test.ts`
+is the regression test. The API is WebKit's alone, so it is called through a
+presence check — and the assignment is wrapped, because a refused category is a
+worse thing to throw from than to ignore.

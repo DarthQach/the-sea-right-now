@@ -41,3 +41,19 @@ currents or water quality is stale, one publishing nothing is dead. Stations the
 visitor has actually opened use their real reading age instead, and the pins
 recolour when that becomes known. Hover labels are worded differently for the two
 cases, so the interface never claims an age it does not have.
+
+## 2026-08-25 — The sound works on an iPhone
+
+The sonification played on every desktop browser and on no iPhone, in either
+Safari or Chrome — the same engine on iOS, which is what identified it as a
+platform policy rather than a browser bug.
+
+Every sound this product makes is synthesised from the buoy's numbers; nothing is
+downloaded and nothing is a recording. WebKit assigns a page like that the
+*ambient* audio session category, which iOS silences with the Ring/Silent switch
+regardless of volume, and whose level follows the ringer rather than the media
+volume. A page playing a recording would have been given the `playback` category
+for free. This one now asks for it, on the tap that starts the sound.
+
+A visitor on a phone hears the sea with the switch in either position, and the
+volume buttons change the sound instead of the ringer.
