@@ -155,3 +155,45 @@ promise the water makes.
 They are genuinely different graphs. The master gain stays where it is and the
 outgoing graph is disconnected then disposed after its fade, so switching has no
 gap in it.
+
+---
+
+## Milestone 4 — journey 3: find a station
+
+**Pin status comes from NDBC's own index flag, not from live readings.** The
+design describes live (within 2 hours), stale (2–24 hours) and dead. Knowing that
+for all 1,275 stations would need a poller over the whole network, which
+`docs/04-build-prompt.md` explicitly rules out — it would raise request volume by
+three orders of magnitude. So the globe uses what the index actually contains:
+`met` (NDBC reported meteorological data within 8 hours) is live, a station still
+publishing currents or water quality is stale, and one publishing nothing is
+dead. For any station the visitor has actually opened, the exact reading age is
+known and used instead, and the pins recolour. The hover label wording is
+different in each case, because they are different claims — it never states an
+age this project does not have. Recorded in `docs/changes.md`.
+
+**Coastlines are Natural Earth 110m, rasterised in the browser.** Public domain,
+so it can ship inside the bundle; 66 KB after rounding coordinates to two
+decimals, which is about a kilometre and far finer than a few-hundred-pixel globe
+can show. The polygons are drawn into an equirectangular canvas at runtime and
+used as the sphere's texture, so there is no image asset and nothing that could
+be mistaken for a photograph of the Earth.
+
+**Picking casts one ray at the globe, not 1,275 rays at pins.** The sphere is a
+single intersection test and the nearest station to the point it hits is a linear
+scan over an array the page already has. It also means stations on the far side
+can never be picked, because the ray stops at the front surface.
+
+**One canvas and one renderer host both worlds.** Building a second GPU context
+for the globe would cost a fresh context every time someone went back to the map;
+`SceneHost` swaps worlds instead, and both stay alive once made.
+
+**`formatDistance` says "right beside it" under 100 m.** Some stations share a
+mooring — a saildrone parked at a buoy — and the nearest-station offer read
+"0 m away", which looks like a bug rather than a fact.
+
+**The journey-3 smoke test finds a silent station at run time rather than
+hardcoding an ID.** Which buoys are down changes by the week. It asks the live
+index for a station that is not reporting and has a reporting one within 300 km,
+then probes a few. The no-nearby-station variant is covered by unit tests, which
+can put a station in the Bay of Biscay without waiting for one to fail there.

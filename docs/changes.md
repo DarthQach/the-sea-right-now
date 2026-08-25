@@ -27,3 +27,17 @@ publishes it; elsewhere it is estimated from wind speed and marked as derived.
 The two are normalised so their total is exactly the reported significant wave
 height, so nothing about the measurement is overstated. A visitor sees a real
 sea instead of a mirror, and the spectrum plot shows both peaks.
+
+## 2026-08-25 — Globe pin status reports what the index knows, not a live age
+
+`docs/03-design-prompt.md` specifies three pin states by reading age: live within
+two hours, stale within a day, dead beyond. Knowing that for all 1,275 stations
+would require polling the whole NDBC network, which `docs/04-build-prompt.md`
+rules out in the same breath as it asks for the states.
+
+The globe therefore colours pins from NDBC's own index: a station the index marks
+as having reported weather within eight hours is live, one still publishing
+currents or water quality is stale, one publishing nothing is dead. Stations the
+visitor has actually opened use their real reading age instead, and the pins
+recolour when that becomes known. Hover labels are worded differently for the two
+cases, so the interface never claims an age it does not have.
