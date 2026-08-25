@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { StationIndex } from '../../lib/shared/types'
 import { fetchStationIndex } from '../../lib/api'
-import snapshot from '../../../public/stations.snapshot.json'
+import snapshot from '../../data/stations.snapshot.json'
 
 /**
  * The station index.

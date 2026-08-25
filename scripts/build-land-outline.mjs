@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url'
 
 const SOURCE =
   'https://raw.githubusercontent.com/martynafford/natural-earth-geojson/master/110m/physical/ne_110m_land.json'
-const OUTPUT = fileURLToPath(new URL('../public/land-110m.json', import.meta.url))
+const OUTPUT = fileURLToPath(new URL('../src/data/land-110m.json', import.meta.url))
 
 const response = await fetch(SOURCE)
 if (!response.ok) {

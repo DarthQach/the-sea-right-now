@@ -8,6 +8,7 @@
  */
 import type { Env } from './index'
 import type { Station, StationIndex } from '../lib/shared/types'
+import snapshot from '../data/stations.snapshot.json'
 import { fetchActiveStationsXml } from './ndbc/client'
 import { parseActiveStations } from './ndbc/stations'
 import { INDEX_TTL_SECONDS, indexKey, readCached, writeCached } from './cache'
@@ -15,16 +16,13 @@ import { INDEX_TTL_SECONDS, indexKey, readCached, writeCached } from './cache'
 /** A parsed index with only 500 stations means NDBC served us something broken. */
 const MINIMUM_PLAUSIBLE_STATIONS = 500
 
-let bundledSnapshot: StationIndex | null = null
-
-async function loadBundledSnapshot(env: Env): Promise<StationIndex> {
-  if (bundledSnapshot !== null) return bundledSnapshot
-  const response = await env.ASSETS.fetch(new Request('https://assets.internal/stations.snapshot.json'))
-  if (!response.ok) throw new Error('The bundled station snapshot is missing from the assets.')
-  const index = (await response.json()) as StationIndex
-  bundledSnapshot = { ...index, source: 'bundled' }
-  return bundledSnapshot
-}
+/**
+ * The snapshot is imported at build time rather than fetched from the asset
+ * store: it is the same file the page bundles, it is needed on the failure path
+ * where an extra round trip is the last thing anyone wants, and importing it
+ * means there is exactly one copy of it in the repository.
+ */
+const BUNDLED: StationIndex = { ...(snapshot as StationIndex), source: 'bundled' }
 
 export async function getStationIndex(env: Env, ctx: ExecutionContext): Promise<StationIndex> {
   const cached = await readCached<StationIndex>(indexKey())
@@ -39,7 +37,7 @@ export async function getStationIndex(env: Env, ctx: ExecutionContext): Promise<
     writeCached(indexKey(), index, INDEX_TTL_SECONDS, ctx, new Date().toISOString())
     return index
   } catch {
-    return loadBundledSnapshot(env)
+    return BUNDLED
   }
 }
 

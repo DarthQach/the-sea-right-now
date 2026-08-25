@@ -36,6 +36,18 @@ jobs:
       - name: verify:all
         run: npm run verify:all
 
+      # The journey tests are the only thing here that can fail for reasons the
+      # log does not explain. Keep the traces when they do.
+      - name: Upload the Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
   deploy:
     name: Deploy to Cloudflare
     needs: verify

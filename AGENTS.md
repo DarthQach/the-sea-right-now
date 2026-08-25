@@ -25,8 +25,8 @@ sound of it from the same numbers. Free, no accounts, deployed at
 | `npm run smoke` | The journey gate — see **Verification** |
 | `npm run verify:all` | Everything, plus the production build |
 | `npm run smoke:webgpu` | The opt-in WebGPU project — slow, excluded from `smoke` |
-| `npm run snapshot:stations` | Regenerates `public/stations.snapshot.json` from NDBC |
-| `node scripts/build-land-outline.mjs` | Regenerates `public/land-110m.json` from Natural Earth |
+| `npm run snapshot:stations` | Regenerates `src/data/stations.snapshot.json` from NDBC |
+| `node scripts/build-land-outline.mjs` | Regenerates `src/data/land-110m.json` from Natural Earth |
 
 ## Stack
 
@@ -42,7 +42,8 @@ sound of it from the same numbers. Free, no accounts, deployed at
 | Shared logic — spectrum maths, geography, URL state, storage | `src/lib` |
 | Types shared verbatim with the Worker | `src/lib/shared/types.ts` |
 | Cloudflare Worker — routes, NDBC parser, caching, rate limiting | `src/worker` |
-| Static assets: bundled station index, coastline outlines | `public` |
+| Bundled station index and coastline outlines, imported at build time | `src/data` |
+| Static files served as-is | `public` |
 | Unit tests (Vitest) | `tests/unit` |
 | Worker tests (Vitest inside workerd) | `tests/worker` |
 | Journey tests (Playwright) | `tests/smoke` |
@@ -111,6 +112,9 @@ public reads; there is no write path and no authentication anywhere.
 - **The looping frequency quantisation applies to the phase only.** Feeding the
   snapped frequency into the spectrum as well throws away most of a narrow swell
   peak. There is a comment at the exact line; do not merge the two values.
+- **Never import anything from `public/`.** Vite rejects it — it is a copy
+  directory, not part of the module graph. Data that both the page and the
+  Worker need lives in `src/data` and is imported by both.
 - **A `<canvas>` hands out one graphics context in its lifetime.** That is why
   `SceneStage` creates the element inside its effect rather than rendering it:
   under StrictMode a React-owned canvas reaches the second renderer already dead.

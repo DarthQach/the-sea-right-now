@@ -254,3 +254,11 @@ speaks up.
 It is the only place the anti-SSRF validation and the rate limiter run end to end
 through the real handler, the real cache and the real `fetch`, rather than as
 functions. It talks to live NDBC, because there is no mock upstream.
+
+**The bundled station index and the coastlines live in `src/data`, not `public`,
+and the Worker imports the snapshot rather than fetching it from the asset
+store.** Vite rejects imports from `public/` — it is a copy directory, not part
+of the module graph. It happened to work on the development machine and failed in
+CI, which is where it was caught. Importing the snapshot into the Worker as well
+means there is exactly one copy of the file in the repository and no round trip
+on the failure path, which is the last place anyone wants one.

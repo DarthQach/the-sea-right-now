@@ -7,7 +7,7 @@
  * stock imagery and this is data rather than a picture of the Earth.
  */
 import { CanvasTexture, LinearFilter, SRGBColorSpace } from 'three/webgpu'
-import land from '../../../public/land-110m.json'
+import land from '../../data/land-110m.json'
 
 const WIDTH = 2048
 const HEIGHT = 1024

@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
 
 const USER_AGENT = process.env.NDBC_USER_AGENT ?? 'TheSeaRightNow/1.0 (+https://sea.vicaai.dev)'
 const SOURCE = 'https://www.ndbc.noaa.gov/activestations.xml'
-const OUTPUT = fileURLToPath(new URL('../public/stations.snapshot.json', import.meta.url))
+const OUTPUT = fileURLToPath(new URL('../src/data/stations.snapshot.json', import.meta.url))
 
 const response = await fetch(SOURCE, { headers: { 'user-agent': USER_AGENT } })
 if (!response.ok) {

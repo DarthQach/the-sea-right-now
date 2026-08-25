@@ -78,7 +78,8 @@ src/scene     three.js — the sea and globe worlds, renderer, camera, frame loo
 src/audio     Web Audio — both sonification mappings, generated live
 src/lib       Shared logic — spectrum maths, geography, URL state, storage
 src/worker    The Cloudflare Worker — routes, NDBC parser, caching, rate limiting
-public        Static assets: the bundled station index and coastline outlines
+src/data      The bundled station index and coastline outlines, imported at build time
+public        Static assets served as files (just the favicon)
 scripts       One-off generators and the verification runners
 tests/unit    Vitest — logic whose correctness is not obvious
 tests/worker  Vitest inside workerd — the API contract
