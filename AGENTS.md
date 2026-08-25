@@ -145,6 +145,13 @@ in parallel, by moving a test down a layer (a browser test that only checks a
 JSON fact becomes an HTTP test), or by deleting a duplicate. **Never raise a
 budget.** Never report a budget as met without the measured number.
 
+**The budgets are measured on a developer machine**, which is the reference: it
+is where these commands are run constantly and where being slow costs something.
+A CI runner has two cores and no GPU, so every shader in the smoke tier is
+compiled and rasterised on the CPU; `verify:all` allows three times the budget
+there and says so in its output. That is an allowance for different hardware, not
+a raised budget — the number to quote is always the local one.
+
 **Tests are born from exactly two things:** a new user journey (one smoke test),
 or a real bug (one regression test, **written failing first** so it is proven to
 catch the thing). Do not write a test because a piece of code looks untested. A
