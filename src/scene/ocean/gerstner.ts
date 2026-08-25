@@ -40,11 +40,18 @@ export interface GerstnerOptions {
   outerRadius: number
 }
 
+/**
+ * Deliberately lighter than the FFT path's mesh. This is the ocean for machines
+ * without WebGPU — older laptops, software rasterisers — and every vertex here
+ * costs a full sum over the wave train. Roughly 28,000 vertices rather than the
+ * FFT path's 188,000, which is what keeps this honest on the hardware it exists
+ * for.
+ */
 export const DEFAULT_GERSTNER_OPTIONS: GerstnerOptions = {
-  radialSegments: 220,
-  angularSegments: 320,
+  radialSegments: 140,
+  angularSegments: 200,
   innerRadius: 0.6,
-  outerRadius: 7000,
+  outerRadius: 5000,
 }
 
 export class GerstnerOcean implements Ocean {

@@ -25,7 +25,15 @@ export default defineConfig({
     {
       name: 'smoke',
       grep: /@smoke/,
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: {
+          // CI containers give Chromium a very small /dev/shm, and a page
+          // holding a WebGL context fills it and takes the whole session down
+          // with "Internal server error, session closed".
+          args: ['--disable-dev-shm-usage'],
+        },
+      },
     },
     {
       // Opt-in only. Exercises the WebGPU compute ocean under SwiftShader; slow
@@ -35,7 +43,7 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: {
-          args: ['--enable-unsafe-webgpu', '--use-angle=swiftshader', '--enable-features=Vulkan'],
+          args: ['--enable-unsafe-webgpu', '--use-angle=swiftshader', '--disable-dev-shm-usage'],
         },
       },
     },

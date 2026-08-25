@@ -1,4 +1,4 @@
-// Compacts Natural Earth's 110m land polygons into the file the globe draws.
+// Compacts Natural Earth 110m land polygons into the file the globe draws.
 //
 // Natural Earth is public domain ("no restrictions whatsoever"), which is why
 // this can ship inside the bundle. Coordinates are rounded to two decimals —

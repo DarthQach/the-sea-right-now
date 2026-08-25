@@ -1,4 +1,4 @@
-// Regenerates public/stations.snapshot.json from NDBC.
+// Regenerates src/data/stations.snapshot.json from NDBC.
 //
 // The snapshot ships inside the bundle so the globe renders on first paint with
 // no network round trip, and so the Worker has an index to fall back to when
