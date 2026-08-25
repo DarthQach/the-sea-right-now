@@ -24,3 +24,28 @@ export function claimMediaAudioSession(): void {
     /* An engine that has the property but will not take the value. */
   }
 }
+
+/**
+ * Ask again whenever the page comes back to the front.
+ *
+ * iOS can reset an audio session across an interruption — a phone call, or a
+ * long stretch backgrounded — and a reset drops the page back to ambience, where
+ * the Ring/Silent switch silences it all over again. Returning to the foreground
+ * is the moment the page is known to be audible again, and the cheapest place to
+ * claim the category a second time.
+ *
+ * `isActive` is asked at fire time rather than captured, so a page that comes
+ * back with the sound stopped does not claim a media session it is not using.
+ *
+ * Returns the function that stops watching.
+ */
+export function watchAudioSession(isActive: () => boolean): () => void {
+  const onVisibilityChange = (): void => {
+    if (document.visibilityState !== 'visible') return
+    if (!isActive()) return
+    claimMediaAudioSession()
+  }
+
+  document.addEventListener('visibilitychange', onVisibilityChange)
+  return () => document.removeEventListener('visibilitychange', onVisibilityChange)
+}

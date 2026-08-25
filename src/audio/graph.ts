@@ -10,7 +10,7 @@
  */
 import type { SpectrumParams } from '../lib/spectrum'
 import { LiteralMapping } from './literal'
-import { claimMediaAudioSession } from './session'
+import { claimMediaAudioSession, watchAudioSession } from './session'
 import { TunedMapping } from './tuned'
 
 export type AudioMode = 'literal' | 'tuned'
@@ -37,6 +37,7 @@ export class SeaAudio {
   private level = 0
   private mapping: SonificationMapping | null = null
   private frameHandle: number | null = null
+  private releaseSessionWatch: (() => void) | null = null
 
   private mode: AudioMode = 'literal'
   private volume = 0.6
@@ -64,8 +65,11 @@ export class SeaAudio {
 
     if (this.context === null) {
       // Before a single sample exists, or iOS plays the whole thing as ambience
-      // and the Ring/Silent switch decides whether anyone hears the sea.
+      // and the Ring/Silent switch decides whether anyone hears the sea. Claimed
+      // again on every return to the foreground, because an interruption can
+      // reset the session underneath a page that is still playing.
       claimMediaAudioSession()
+      this.releaseSessionWatch = watchAudioSession(() => this.playing)
 
       this.context = new AudioContext({ latencyHint: 'playback' })
       this.master = this.context.createGain()
@@ -122,6 +126,8 @@ export class SeaAudio {
 
   dispose(): void {
     this.stopFrameLoop()
+    this.releaseSessionWatch?.()
+    this.releaseSessionWatch = null
     this.mapping?.dispose()
     this.mapping = null
     void this.context?.close()

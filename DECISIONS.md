@@ -340,3 +340,12 @@ element would have been given for free. `navigator.audioSession.type =
 is the regression test. The API is WebKit's alone, so it is called through a
 presence check — and the assignment is wrapped, because a refused category is a
 worse thing to throw from than to ignore.
+
+The category is claimed again on every `visibilitychange` back to visible, not
+only once at the context's creation, because iOS can reset a session across an
+interruption — a phone call, or a long stretch backgrounded — and a reset drops
+the page back to ambience underneath audio that is still playing. This one is
+defensive rather than observed: the original silence was reproduced on a device
+and the re-claim has not been, so the guard is written to do nothing whenever it
+is not needed. It asks whether the sound is playing at fire time rather than
+capturing it, so a page that returns with the sound stopped claims nothing.
