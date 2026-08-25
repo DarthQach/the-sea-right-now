@@ -7,6 +7,7 @@ import { SpectrumPlot } from '../components/SpectrumPlot'
 import { AudioControls } from '../components/AudioControls'
 import type { AudioState } from '../hooks/useAudio'
 import type { AudioMode } from '../../lib/url-state'
+import { Star } from '../components/StationsPanel'
 
 export interface SeaChromeProps {
   stationId: string
@@ -21,6 +22,12 @@ export interface SeaChromeProps {
   onAudioMuted: (muted: boolean) => void
   onResetCamera: () => void
   onOpenGlobe: () => void
+  onOpenSearch: () => void
+  favourited: boolean
+  onToggleFavourite: () => void
+  onCopyLink: () => void
+  /** Set for a few seconds after the link is copied. */
+  copyState: 'idle' | 'copied' | 'failed'
 }
 
 /**
@@ -79,6 +86,46 @@ export function SeaChrome(props: SeaChromeProps) {
             <button
               type="button"
               className="control control--icon"
+              aria-pressed={props.favourited}
+              onClick={props.onToggleFavourite}
+              title={props.favourited ? 'Remove from favourites' : 'Add to favourites'}
+              aria-label={props.favourited ? 'Remove from favourites' : 'Add to favourites'}
+              data-testid="favourite-toggle"
+            >
+              <Star filled={props.favourited} />
+            </button>
+
+            <button
+              type="button"
+              className="control control--icon"
+              onClick={props.onCopyLink}
+              title="Copy a link to this station"
+              aria-label="Copy a link to this station"
+              data-testid="copy-link"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1" />
+                <path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1" />
+              </svg>
+            </button>
+
+            <button
+              type="button"
+              className="control control--icon"
+              onClick={props.onOpenSearch}
+              title="Search stations"
+              aria-label="Search stations"
+              data-testid="open-search"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="11" cy="11" r="6" />
+                <path d="M20 20l-4.5-4.5" />
+              </svg>
+            </button>
+
+            <button
+              type="button"
+              className="control control--icon"
               onClick={props.onResetCamera}
               title="Reset the camera to the default framing"
               aria-label="Reset the camera to the default framing"
@@ -92,6 +139,15 @@ export function SeaChrome(props: SeaChromeProps) {
               </svg>
             </button>
           </div>
+
+          {/* A quiet inline confirmation, never a full-width banner. */}
+          {props.copyState === 'idle' ? null : (
+            <p className="copy-confirmation" role="status" data-testid="copy-confirmation">
+              {props.copyState === 'copied'
+                ? 'Link copied. It opens on this water.'
+                : 'Could not reach the clipboard — the link is in the address bar.'}
+            </p>
+          )}
         </div>
       </div>
     </>

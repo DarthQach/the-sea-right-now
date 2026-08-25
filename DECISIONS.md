@@ -197,3 +197,25 @@ hardcoding an ID.** Which buoys are down changes by the week. It asks the live
 index for a station that is not reporting and has a reporting one within 300 km,
 then probes a few. The no-nearby-station variant is covered by unit tests, which
 can put a station in the Bay of Biscay without waiting for one to fail there.
+
+---
+
+## Milestone 5 — journey 4: keep it and share it
+
+**At the favourites cap, the star refuses rather than dropping the oldest.**
+Which one would go is not this product's decision to make. The panel says so
+plainly and points at removing one.
+
+**A refused clipboard is handled rather than pretended.** Clipboard access can be
+denied outright. When it is, the link is written into the address bar and the
+confirmation says where it went, instead of claiming a copy that did not happen.
+
+**The shared link carries the station and, if one was chosen, the audio mapping —
+and nothing else.** Camera position is deliberately not encoded, per the settled
+decision in `docs/04-build-prompt.md`: a link means "this water", not "this exact
+view of it", and it keeps the URL short enough to read aloud.
+
+**Journey 4 opens the copied link in a fresh browser context**, not the same one
+with storage cleared. It is the only way to prove the claim the product actually
+makes — that someone who has never seen the site lands on that water with nothing
+to dismiss.

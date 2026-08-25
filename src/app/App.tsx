@@ -10,6 +10,8 @@ import { usePrefs } from './hooks/usePrefs'
 import { useReading } from './hooks/useReading'
 import { useNow } from './hooks/useNow'
 import { useAudio } from './hooks/useAudio'
+import { useFavourites } from './hooks/useFavourites'
+import { shareableUrl } from '../lib/url-state'
 import { SceneStage } from './components/SceneStage'
 import { SeaChrome } from './views/SeaChrome'
 import { GlobeChrome } from './views/GlobeChrome'
@@ -46,6 +48,8 @@ export function App() {
   const [backend, setBackend] = useState<Backend | null>(null)
   const [throttled, setThrottled] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle')
+  const favourites = useFavourites()
   const [hovered, setHovered] = useState<{ station: Station; screen: { x: number; y: number } } | null>(null)
 
   // Exact reading ages for stations this visitor has actually opened. Everything
@@ -79,6 +83,27 @@ export function App() {
   const statusOf = useCallback(
     (candidate: Station) => stationStatus(candidate, knownAges.get(candidate.id.toUpperCase())),
     [knownAges],
+  )
+
+  /**
+   * The link the copy control hands over: the station, and the mapping if one
+   * was chosen. Nothing personal, and short enough to read down a phone.
+   */
+  const copyLink = useCallback(
+    async (id: string) => {
+      const url = shareableUrl(globalThis.location.origin, id, urlState.audioMode)
+      try {
+        await navigator.clipboard.writeText(url)
+        setCopyState('copied')
+      } catch {
+        // Clipboard access can be refused outright. Put the link where the
+        // visitor can still get at it rather than pretending it worked.
+        navigate({ stationId: id, audioMode: urlState.audioMode }, true)
+        setCopyState('failed')
+      }
+      globalThis.setTimeout(() => setCopyState('idle'), 3200)
+    },
+    [navigate, urlState.audioMode],
   )
 
   // How many stations sit in each status treatment. The globe's pins are GPU
@@ -184,6 +209,11 @@ export function App() {
             }}
             onResetCamera={() => setResetSignal((n) => n + 1)}
             onOpenGlobe={() => navigate({ stationId: null })}
+            onOpenSearch={() => setPanelOpen(true)}
+            favourited={favourites.has(stationId)}
+            onToggleFavourite={() => favourites.toggle(stationId)}
+            onCopyLink={() => void copyLink(stationId)}
+            copyState={copyState}
           />
         ) : null}
 
@@ -226,6 +256,7 @@ export function App() {
             stations={index.stations}
             currentStationId={stationId}
             knownAges={knownAges}
+            favourites={favourites}
             onSelect={openStation}
             onClose={() => setPanelOpen(false)}
           />

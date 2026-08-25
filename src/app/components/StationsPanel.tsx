@@ -1,26 +1,41 @@
 import { useDeferredValue, useMemo, useState } from 'react'
 import type { Station } from '../../lib/shared/types'
 import { stationStatus, stationStatusLabel } from '../../lib/station-status'
+import type { FavouritesState } from '../hooks/useFavourites'
 
 export interface StationsPanelProps {
   stations: Station[]
   currentStationId: string | null
   knownAges: ReadonlyMap<string, number | null>
+  favourites: FavouritesState
   onSelect: (station: Station) => void
   onClose: () => void
 }
 
+type Segment = 'all' | 'favourites'
+
 const RESULT_LIMIT = 120
 
 /**
- * Search over the station index already in memory. No network call, so there is
- * no loading state to build and no way for it to fail.
+ * Search and favourites.
+ *
+ * Both run against the station index already in memory. There is no network call
+ * here, so there is no loading state to build and no way for it to fail.
  */
 export function StationsPanel(props: StationsPanelProps) {
+  const [segment, setSegment] = useState<Segment>('all')
   const [query, setQuery] = useState('')
   const deferred = useDeferredValue(query)
 
-  const results = useMemo(() => matchStations(props.stations, deferred), [props.stations, deferred])
+  const favouriteStations = useMemo(() => {
+    const byId = new Map(props.stations.map((station) => [station.id.toUpperCase(), station]))
+    return props.favourites.stationIds
+      .map((id) => byId.get(id))
+      .filter((station): station is Station => station !== undefined)
+  }, [props.stations, props.favourites.stationIds])
+
+  const source = segment === 'favourites' ? favouriteStations : props.stations
+  const results = useMemo(() => matchStations(source, deferred), [source, deferred])
 
   return (
     <aside className="panel stations-panel" data-testid="stations-panel" aria-label="Stations">
@@ -48,25 +63,51 @@ export function StationsPanel(props: StationsPanelProps) {
         </button>
       </div>
 
-      <p className="stations-panel__count secondary" data-testid="station-count">
-        {results.total === 0
-          ? 'No station matches that.'
-          : `${results.total.toLocaleString('en-GB')} station${results.total === 1 ? '' : 's'}`}
-      </p>
+      <div className="segmented segmented--full" role="group" aria-label="Which stations to show">
+        <button
+          type="button"
+          className="segmented__option"
+          aria-pressed={segment === 'all'}
+          data-testid="segment-all"
+          onClick={() => setSegment('all')}
+        >
+          All
+        </button>
+        <button
+          type="button"
+          className="segmented__option"
+          aria-pressed={segment === 'favourites'}
+          data-testid="segment-favourites"
+          onClick={() => setSegment('favourites')}
+        >
+          Favourites{props.favourites.stationIds.length > 0 ? ` · ${props.favourites.stationIds.length}` : ''}
+        </button>
+      </div>
 
-      {results.total === 0 ? (
+      {/* Two distinct empty states: nothing saved yet, and nothing matched. */}
+      {segment === 'favourites' && props.favourites.stationIds.length === 0 ? (
+        <p className="stations-panel__empty" data-testid="favourites-empty">
+          Nothing saved yet. Press the <Star filled aria-hidden /> on any station and it will be
+          waiting here next time you open this browser — favourites are kept on this device only, and
+          never leave it.
+        </p>
+      ) : results.total === 0 ? (
         <p className="stations-panel__empty" data-testid="search-empty">
-          Nothing matched “{deferred.trim()}”. The network is operated by the United States, so its
-          stations are named for US coasts, the Great Lakes, Hawaii, Alaska and the Caribbean — try a
-          state, a city, or a five-character station ID like <span className="mono">46042</span>.
+          Nothing matched “{deferred.trim()}”.
+          {segment === 'favourites'
+            ? ' Clear the search to see everything you have saved.'
+            : ' The network is operated by the United States, so its stations are named for US coasts, the Great Lakes, Hawaii, Alaska and the Caribbean — try a state, a city, or a five-character station ID like '}
+          {segment === 'all' ? <span className="mono">46042</span> : null}
+          {segment === 'all' ? '.' : ''}
         </p>
       ) : (
         <ul className="stations-panel__list" data-testid="station-list">
           {results.shown.map((station) => {
             const age = props.knownAges.get(station.id.toUpperCase())
             const status = stationStatus(station, age)
+            const favourited = props.favourites.has(station.id)
             return (
-              <li key={station.id}>
+              <li key={station.id} className="station-row-wrap">
                 <button
                   type="button"
                   className="station-row"
@@ -82,11 +123,28 @@ export function StationsPanel(props: StationsPanelProps) {
                     <span className="secondary">{stationStatusLabel(station, age)}</span>
                   </span>
                 </button>
+                <button
+                  type="button"
+                  className="station-row__star"
+                  aria-pressed={favourited}
+                  aria-label={favourited ? `Remove ${station.name} from favourites` : `Add ${station.name} to favourites`}
+                  data-testid={`station-star-${station.id}`}
+                  onClick={() => props.favourites.toggle(station.id)}
+                >
+                  <Star filled={favourited} />
+                </button>
               </li>
             )
           })}
         </ul>
       )}
+
+      {props.favourites.atCap ? (
+        <p className="stations-panel__cap" role="status" data-testid="favourites-cap">
+          That is {props.favourites.cap} favourites, which is as many as this keeps. Remove one you no
+          longer watch and the star will take the new one.
+        </p>
+      ) : null}
 
       {results.total > results.shown.length ? (
         <p className="stations-panel__more secondary">
@@ -94,11 +152,18 @@ export function StationsPanel(props: StationsPanelProps) {
         </p>
       ) : null}
 
-      {/* The honest note about whose network this is. */}
       <p className="stations-panel__note secondary">
         Every station here belongs to NOAA’s National Data Buoy Center.
       </p>
     </aside>
+  )
+}
+
+export function Star({ filled, ...rest }: { filled?: boolean } & React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={filled ? 'star star--filled' : 'star'} {...rest}>
+      <path d="M12 3.6l2.6 5.3 5.8.85-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.85z" />
+    </svg>
   )
 }
 
