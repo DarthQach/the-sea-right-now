@@ -67,8 +67,7 @@ export function AudioControls({
       <div className="volume">
         <button
           type="button"
-          className="control control--icon"
-          style={{ minWidth: 32, width: 32, minHeight: 32, border: 'none', background: 'none' }}
+          className="control control--icon control--bare"
           aria-pressed={state.muted}
           aria-label={state.muted ? 'Unmute' : 'Mute'}
           data-testid="audio-mute"

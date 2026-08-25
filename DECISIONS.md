@@ -262,3 +262,16 @@ of the module graph. It happened to work on the development machine and failed i
 CI, which is where it was caught. Importing the snapshot into the Worker as well
 means there is exactly one copy of the file in the repository and no round trip
 on the failure path, which is the last place anyone wants one.
+
+**Four controls were under the 44 px minimum and were fixed.** The mute button,
+the "NOAA NDBC" attribution and the notice's dismiss were 32 px tall, and the
+volume slider's hit area was its own 3 px track. The track is still 3 px — it is
+the right weight to look at — but it is now drawn inside a 44 px input. Checked
+across desktop, phone and the globe: nothing interactive is under 44×44.
+
+**The smoke tier's per-test ceiling is 90 seconds on CI and 45 locally.** A
+two-core runner with no GPU compiles and rasterises every shader on the CPU. The
+first CI failure looked like a bug and was not: the trace showed a perfectly
+rendered page with real readout values, reached slowly. CI also runs one
+Playwright worker rather than two, because two software-rasterised pages on two
+cores are each slower than one.

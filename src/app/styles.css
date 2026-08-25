@@ -538,16 +538,24 @@ a {
 .volume {
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 44px;
-  padding: 0 12px;
+  gap: 4px;
+  min-height: 44px;
+  padding: 0 8px;
   border: 1px solid var(--panel-border);
   border-radius: var(--radius-control);
 }
 
+/* A 3px track is the right weight to look at and the wrong one to hit, so the
+   input itself is 44px tall and the track is drawn inside it. */
 input[type='range'] {
   appearance: none;
   width: 96px;
+  height: 44px;
+  background: none;
+  cursor: pointer;
+}
+
+input[type='range']::-webkit-slider-runnable-track {
   height: 3px;
   background: rgb(255 255 255 / 14%);
   border-radius: 2px;
@@ -557,9 +565,16 @@ input[type='range']::-webkit-slider-thumb {
   appearance: none;
   width: 14px;
   height: 14px;
+  margin-top: -5.5px;
   border-radius: 50%;
   background: var(--accent);
   cursor: pointer;
+}
+
+input[type='range']::-moz-range-track {
+  height: 3px;
+  background: rgb(255 255 255 / 14%);
+  border-radius: 2px;
 }
 
 input[type='range']::-moz-range-thumb {
@@ -670,8 +685,9 @@ input[type='range']::-moz-range-thumb {
 .notice__dismiss {
   color: var(--text-faint);
   font-size: 12px;
-  padding: 4px 6px;
-  min-height: 32px;
+  padding: 4px 10px;
+  min-height: 44px;
+  flex: none;
 }
 
 .throttle-marker {
@@ -700,7 +716,9 @@ input[type='range']::-moz-range-thumb {
   text-transform: uppercase;
   background: none;
   padding: 6px 2px;
-  min-height: 32px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .attribution:hover {
@@ -1202,4 +1220,15 @@ input[type='range']::-moz-range-thumb {
     max-height: 78vh;
   }
 
+}
+
+/* A control that sits inside another control's frame keeps its hit area but
+   drops its own border. */
+.control--bare {
+  border: none;
+  background: none;
+}
+
+.control--bare:hover {
+  background: rgb(255 255 255 / 6%);
 }
