@@ -11,6 +11,11 @@ import { useReading } from './hooks/useReading'
 import { useNow } from './hooks/useNow'
 import { useAudio } from './hooks/useAudio'
 import { useFavourites } from './hooks/useFavourites'
+import { REDUCED_MOTION_SCALE, useReducedMotion } from './hooks/useMotion'
+import { useOnBattery } from './hooks/useBattery'
+import { SettingsPanel } from './components/SettingsPanel'
+import { AboutPanel } from './components/AboutPanel'
+import { ReducedCapabilityNotice } from './components/Notices'
 import { shareableUrl } from '../lib/url-state'
 import { SceneStage } from './components/SceneStage'
 import { SeaChrome } from './views/SeaChrome'
@@ -49,7 +54,53 @@ export function App() {
   const [throttled, setThrottled] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle')
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [noticeDismissed, setNoticeDismissed] = useState(false)
+  const [throttleReasons, setThrottleReasons] = useState<string[]>([])
+  const [pointerAwake, setPointerAwake] = useState(false)
+  const [forcedWebGL, setForcedWebGL] = useState(false)
   const favourites = useFavourites()
+
+  const { reduced, systemPrefers } = useReducedMotion(prefs.motionOverride)
+  const onBattery = useOnBattery()
+
+  // The motion preference reaches the interface's own transitions through the
+  // document, so one setting governs both the water and the panels.
+  useEffect(() => {
+    document.documentElement.dataset.motion = prefs.motionOverride === 'auto' ? '' : prefs.motionOverride
+  }, [prefs.motionOverride])
+
+  // With the interface hidden, pointer movement brings the readout back for a
+  // moment and then lets it fade again.
+  useEffect(() => {
+    if (!prefs.chromeHidden) return
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const wake = () => {
+      setPointerAwake(true)
+      clearTimeout(timer)
+      timer = setTimeout(() => setPointerAwake(false), 2400)
+    }
+    globalThis.addEventListener('pointermove', wake)
+    globalThis.addEventListener('keydown', wake)
+    return () => {
+      clearTimeout(timer)
+      globalThis.removeEventListener('pointermove', wake)
+      globalThis.removeEventListener('keydown', wake)
+    }
+  }, [prefs.chromeHidden])
+
+  // Escape brings the interface back, so it can never be hidden irrecoverably.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      if (prefs.chromeHidden) setPrefs({ chromeHidden: false })
+      setSettingsOpen(false)
+      setPanelOpen(false)
+      if (urlState.about) navigate({ about: false }, true)
+    }
+    globalThis.addEventListener('keydown', onKey)
+    return () => globalThis.removeEventListener('keydown', onKey)
+  }, [prefs.chromeHidden, setPrefs, urlState.about, navigate])
   const [hovered, setHovered] = useState<{ station: Station; screen: { x: number; y: number } } | null>(null)
 
   // Exact reading ages for stations this visitor has actually opened. Everything
@@ -164,12 +215,15 @@ export function App() {
       data-audio-level={audio.state.level.toFixed(4)}
       data-pin-counts={`${pinCounts.live},${pinCounts.stale},${pinCounts.dead}`}
       data-stations={index.stations.length}
+      data-reduced-motion={reduced ? 'true' : 'false'}
+      data-chrome-hidden={prefs.chromeHidden ? 'true' : 'false'}
+      data-throttle-reasons={throttleReasons.join(',')}
     >
       <SceneStage
         mode={mode}
         forceWebGL={urlState.forceWebGL}
-        forceThrottled={urlState.forceThrottled}
-        motionScale={1}
+        throttle={{ requested: urlState.forceThrottled, battery: onBattery }}
+        motionScale={reduced ? REDUCED_MOTION_SCALE : 1}
         resetSignal={resetSignal}
         params={params}
         stations={index.stations}
@@ -180,11 +234,21 @@ export function App() {
           setHovered(hoveredStation === null || screen === null ? null : { station: hoveredStation, screen })
         }
         onSelectStation={openStation}
-        onBackend={setBackend}
-        onThrottleChange={setThrottled}
+        onBackend={(value, forced) => {
+          setBackend(value)
+          setForcedWebGL(forced)
+        }}
+        onThrottleChange={(value, reasons) => {
+          setThrottled(value)
+          setThrottleReasons(reasons)
+        }}
       />
 
-      <div className="chrome">
+      <div
+        className="chrome"
+        data-hidden={prefs.chromeHidden ? 'true' : 'false'}
+        data-pointer-active={pointerAwake ? 'true' : 'false'}
+      >
         {mode === 'sea' && stationId !== null ? (
           <SeaChrome
             stationId={stationId}
@@ -210,6 +274,11 @@ export function App() {
             onResetCamera={() => setResetSignal((n) => n + 1)}
             onOpenGlobe={() => navigate({ stationId: null })}
             onOpenSearch={() => setPanelOpen(true)}
+            onOpenSettings={() => setSettingsOpen(true)}
+            chromeHidden={prefs.chromeHidden}
+            onToggleChrome={() => setPrefs({ chromeHidden: !prefs.chromeHidden })}
+            onOpenAbout={() => navigate({ about: true }, true)}
+            throttleReasons={throttleReasons}
             favourited={favourites.has(stationId)}
             onToggleFavourite={() => favourites.toggle(stationId)}
             onCopyLink={() => void copyLink(stationId)}
@@ -222,6 +291,7 @@ export function App() {
             stationCount={index.stations.length}
             hovered={hovered}
             onOpenSearch={() => setPanelOpen(true)}
+            onOpenAbout={() => navigate({ about: true }, true)}
           />
         ) : null}
 
@@ -251,6 +321,31 @@ export function App() {
           </div>
         ) : null}
 
+        {settingsOpen ? (
+          <SettingsPanel
+            prefs={prefs}
+            audio={audio.state}
+            systemPrefersReducedMotion={systemPrefers}
+            onAudioMode={(nextMode) => {
+              audio.setMode(nextMode)
+              setPrefs({ audioMode: nextMode })
+            }}
+            onVolume={(volume) => {
+              audio.setVolume(volume)
+              setPrefs({ volume })
+            }}
+            onMotion={(motionOverride) => setPrefs({ motionOverride })}
+            onHideChrome={() => {
+              setPrefs({ chromeHidden: true })
+              setSettingsOpen(false)
+            }}
+            onResetCamera={() => setResetSignal((n) => n + 1)}
+            onClose={() => setSettingsOpen(false)}
+          />
+        ) : null}
+
+        {urlState.about ? <AboutPanel onClose={() => navigate({ about: false }, true)} /> : null}
+
         {panelOpen ? (
           <StationsPanel
             stations={index.stations}
@@ -272,23 +367,41 @@ export function App() {
         />
       ) : null}
 
+      {/* Everything that speaks up from the top edge, stacked so two of them
+          can never land on top of each other. */}
+      <div className="top-notices" data-hidden={prefs.chromeHidden && !pointerAwake ? 'true' : 'false'}>
       {status === 'unavailable' ? (
-        <div className="banner" role="status" data-testid="data-problem-banner">
-          <span className="banner__mark" aria-hidden="true" />
-          <span>
-            Live data from NOAA NDBC is unavailable.
-            {reading === null
-              ? ' No earlier reading for this station has reached us.'
-              : ` The water is drawn from the last reading that did${
-                  staleForSeconds === null ? '' : `, ${Math.round(staleForSeconds / 60)} min ago`
-                }.`}
-          </span>
-          <span className="banner__spacer" />
-          <button type="button" className="control" onClick={retry} data-testid="retry-reading">
-            {retrying ? 'Retrying…' : 'Retry'}
-          </button>
-        </div>
-      ) : null}
+          <div className="banner" role="status" data-testid="data-problem-banner">
+            <span className="banner__mark" aria-hidden="true" />
+            <span>
+              Live data from NOAA NDBC is unavailable.
+              {reading === null ? (
+                ' No earlier reading for this station has reached us.'
+              ) : (
+                <>
+                  {' The water is still moving from the last reading that reached us, taken '}
+                  <span data-testid="banner-age">
+                    {formatAge(staleForSeconds ?? ageSecondsSince(reading.observedAt, now))}
+                  </span>
+                  .
+                </>
+              )}
+            </span>
+            <span className="banner__spacer" />
+            <button type="button" className="control" onClick={retry} data-testid="retry-reading">
+              {retrying ? 'Retrying…' : 'Retry'}
+            </button>
+          </div>
+        ) : null}
+
+        {backend !== null && !noticeDismissed ? (
+          <ReducedCapabilityNotice
+            backend={backend}
+            forced={forcedWebGL}
+            onDismiss={() => setNoticeDismissed(true)}
+          />
+        ) : null}
+      </div>
     </div>
   )
 }

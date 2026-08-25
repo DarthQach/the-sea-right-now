@@ -8,6 +8,5 @@ export default defineConfig({
   test: {
     name: 'worker',
     include: ['tests/worker/**/*.test.ts'],
-    passWithNoTests: true,
   },
 })

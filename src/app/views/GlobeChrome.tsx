@@ -3,6 +3,7 @@ import type { Station } from '../../lib/shared/types'
 export interface GlobeChromeProps {
   stationCount: number
   onOpenSearch: () => void
+  onOpenAbout: () => void
   hovered: { station: Station; screen: { x: number; y: number } } | null
 }
 
@@ -14,7 +15,7 @@ export interface GlobeChromeProps {
  * much of the world has none; that is the truth about the network, and saying so
  * is the difference between an honest map and one that looks broken.
  */
-export function GlobeChrome({ stationCount, onOpenSearch }: GlobeChromeProps) {
+export function GlobeChrome({ stationCount, onOpenSearch, onOpenAbout }: GlobeChromeProps) {
   return (
     <>
       <div className="slot-top-left">
@@ -38,6 +39,12 @@ export function GlobeChrome({ stationCount, onOpenSearch }: GlobeChromeProps) {
             <path d="M20 20l-4.5-4.5" />
           </svg>
           Search
+        </button>
+      </div>
+
+      <div className="slot-bottom-right">
+        <button type="button" className="attribution" onClick={onOpenAbout} data-testid="open-about">
+          NOAA NDBC
         </button>
       </div>
 

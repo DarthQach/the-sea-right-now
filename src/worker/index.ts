@@ -11,6 +11,7 @@
  * of public measurements.
  */
 import { handleApiRequest } from './routes'
+import { rateLimit } from './rate-limit'
 
 export interface Env {
   ASSETS: Fetcher
@@ -22,6 +23,8 @@ export default {
     const url = new URL(request.url)
 
     if (url.pathname === '/api' || url.pathname.startsWith('/api/')) {
+      const limited = rateLimit(request)
+      if (limited !== null) return limited
       return handleApiRequest(request, url, env, ctx)
     }
 

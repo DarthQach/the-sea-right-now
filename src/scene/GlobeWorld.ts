@@ -84,7 +84,7 @@ export class GlobeWorld implements World {
       // A thin cool rim where the sphere turns away, which is what makes the
       // silhouette legible against a black page.
       const rim = pow(clamp(float(1).sub(dot(normalize(normalWorld), normalize(cameraPosition.sub(positionWorld)))), 0, 1), float(3.2))
-      return vec4(map.mul(daylight).add(vec3(0.09, 0.14, 0.2).mul(rim).mul(0.5)), 1)
+      return vec4(map.rgb.mul(daylight).add(vec3(0.09, 0.14, 0.2).mul(rim).mul(0.5)), 1)
     })()
     this.globe = new Mesh(new SphereGeometry(GLOBE_RADIUS, 96, 64), material)
     this.scene.add(this.globe)

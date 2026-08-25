@@ -219,3 +219,38 @@ view of it", and it keeps the URL short enough to read aloud.
 with storage cleared. It is the only way to prove the claim the product actually
 makes — that someone who has never seen the site lands on that water with nothing
 to dismiss.
+
+---
+
+## Milestone 6 — journey 5: honest on any machine, and finish
+
+**Throttled frame rates differ by reason.** A hidden tab drops to 4 fps and half
+resolution — nobody is looking, and it is the case that actually flattens a
+battery. Running on battery drops to 30 fps at full resolution instead: a laptop
+is the device people leave this open on all day, and 4 fps water there would make
+the primary device the worst experience. Both are indicated.
+
+**`?simulateOutage=1` arms one real failure rather than substituting fake data.**
+The station loads normally, the next fetch throws before any request is made, and
+the retry succeeds — the whole arc of populated, unreachable and recovered, with
+real data at both ends. There is no mock reading anywhere in this project.
+
+**The data-problem banner shows the reading's own age when the Worker cannot say.**
+A client-side failure has no `staleForSeconds` from the server, so the banner
+computes the age from `observedAt`. Either way it states an age it actually has.
+
+**Hiding the interface fades every panel except the station header**, which stays
+at 30% with its background removed. CSS opacity is multiplicative, so the whole
+chrome cannot be faded to zero and one child brought back — the slots are faded
+individually instead. Escape always restores it, so it can never be hidden
+irrecoverably.
+
+**The reduced-capability notice and the data-problem banner share one top stack.**
+They collided when the notice sat at the bottom centre, over the readout. Only
+the notice fades when the interface is hidden; a genuine data problem still
+speaks up.
+
+**A Worker-runtime test suite was added** (`tests/worker/api-contract.test.ts`).
+It is the only place the anti-SSRF validation and the rate limiter run end to end
+through the real handler, the real cache and the real `fetch`, rather than as
+functions. It talks to live NDBC, because there is no mock upstream.

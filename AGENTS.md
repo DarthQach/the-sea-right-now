@@ -24,21 +24,27 @@ sound of it from the same numbers. Free, no accounts, deployed at
 | `npm run verify` | The fast gate — see **Verification** |
 | `npm run smoke` | The journey gate — see **Verification** |
 | `npm run verify:all` | Everything, plus the production build |
+| `npm run smoke:webgpu` | The opt-in WebGPU project — slow, excluded from `smoke` |
 | `npm run snapshot:stations` | Regenerates `public/stations.snapshot.json` from NDBC |
+| `node scripts/build-land-outline.mjs` | Regenerates `public/land-110m.json` from Natural Earth |
 
 ## Stack
 
 | Piece | Where it lives |
 |---|---|
 | React 19 UI — panels, readout, spectrum plot, controls | `src/app` |
-| three.js r185 scene — globe, cameras, renderer selection | `src/scene` |
+| The composition root: routing, data, every panel's state | `src/app/App.tsx` |
+| One canvas and one renderer, hosting both worlds | `src/app/components/SceneStage.tsx`, `src/scene/SceneHost.ts` |
+| The sea world — camera, sky, ocean | `src/scene/SeaWorld.ts` |
+| The globe world — sphere, pins, picking | `src/scene/GlobeWorld.ts`, `src/scene/globe` |
 | Ocean — FFT (WebGPU compute, TSL) and Gerstner fallback | `src/scene/ocean` |
 | Web Audio graph — both sonification mappings | `src/audio` |
-| Shared logic — spectrum math, URL state, storage wrappers | `src/lib` |
-| Cloudflare Worker — routes, NDBC parser, caching | `src/worker` |
-| Static assets, bundled station index snapshot | `public` |
+| Shared logic — spectrum maths, geography, URL state, storage | `src/lib` |
+| Types shared verbatim with the Worker | `src/lib/shared/types.ts` |
+| Cloudflare Worker — routes, NDBC parser, caching, rate limiting | `src/worker` |
+| Static assets: bundled station index, coastline outlines | `public` |
 | Unit tests (Vitest) | `tests/unit` |
-| Worker tests (Vitest + workerd) | `tests/worker` |
+| Worker tests (Vitest inside workerd) | `tests/worker` |
 | Journey tests (Playwright) | `tests/smoke` |
 
 Hosting is one Cloudflare Worker serving both the static bundle and `/api/*`.
@@ -54,6 +60,24 @@ browser.
 - All user-facing copy is in English.
 - Numeric surfaces use `font-variant-numeric: tabular-nums` so the readout does
   not shift horizontally when digits change.
+
+## Routes
+
+Every one is reachable by direct URL, which is what lets a journey be entered at
+any point and what makes a shared link work.
+
+| URL | What it is |
+|---|---|
+| `/` | The globe. Also the landing state. |
+| `/?station={id}` | One station's water. The shareable unit. |
+| `/?station={id}&mode=literal\|tuned` | The same, opening in that sonification. |
+| `/?station={id}&forceWebGL=1` | The same, on the reduced renderer. Every smoke test uses this. |
+| `/?about=1` | The about-and-attribution panel, over whatever is behind it. |
+| `/?station={id}&simulateOutage=1` | Loads normally, then induces one real fetch failure so the data-problem banner can be reached on demand. The retry succeeds. |
+| `/?station={id}&forceThrottled=1` | Forces the deliberate low-power rendering mode. |
+
+`GET /api/stations` and `GET /api/station/:id` are the only endpoints. Both are
+public reads; there is no write path and no authentication anywhere.
 
 ## Things that will surprise you
 
@@ -77,6 +101,24 @@ browser.
   in the dashboard.
 - **The `poseidon` repository declares no licence.** Read it; do not copy it. The
   ocean is implemented from the published papers.
+- **The spectrum has two components, not one.** A single JONSWAP peak at the
+  reported dominant period renders a literal mirror on a swell day — 1.2 m at
+  15 seconds is a surface slope of about 0.003. NDBC publishes the swell and
+  wind-sea split in the `.spec` file; it is estimated from wind speed elsewhere.
+- **The FFT cascade patch sizes are 1024 m, 96 m and 12 m.** A patch cannot carry
+  waves longer than itself, and a 14-second swell is about 300 m long. The
+  *bands* those patches cover are the ones the specification describes.
+- **The looping frequency quantisation applies to the phase only.** Feeding the
+  snapped frequency into the spectrum as well throws away most of a narrow swell
+  peak. There is a comment at the exact line; do not merge the two values.
+- **A `<canvas>` hands out one graphics context in its lifetime.** That is why
+  `SceneStage` creates the element inside its effect rather than rendering it:
+  under StrictMode a React-owned canvas reaches the second renderer already dead.
+- **Globe pin status comes from NDBC's index flags, not from live readings.**
+  Knowing real ages for 1,275 stations would need a poller over the whole
+  network, which is out of scope. Stations the visitor opens use their real age.
+- **Panel opacity is 86%, not the 72% in the design direction.** The contrast
+  floor in the same document cannot hold over foam at 72%.
 
 ## Verification
 

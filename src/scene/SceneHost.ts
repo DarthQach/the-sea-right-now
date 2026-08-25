@@ -12,13 +12,24 @@ import type { World } from './World'
 
 /** Frames per second while the tab is visible and the machine is not conserving power. */
 const FULL_FPS = 60
-/** While hidden or on battery. Low enough to be nearly free, high enough to resume instantly. */
-const THROTTLED_FPS = 4
+
+/**
+ * Throttled rates, by reason. A hidden tab gets almost nothing — it is the case
+ * that actually flattens a battery, and nobody is looking. Running on battery is
+ * different: a laptop is the device people leave this open on all day, so the
+ * water stays properly alive, just at a rate that roughly halves the GPU's work.
+ */
+const THROTTLED_FPS: Record<string, number> = {
+  hidden: 4,
+  battery: 30,
+  requested: 4,
+}
+const DEFAULT_THROTTLED_FPS = 4
 
 export interface SceneHostOptions {
   canvas: HTMLCanvasElement
   forceWebGL: boolean
-  onThrottleChange?: (throttled: boolean) => void
+  onThrottleChange?: (throttled: boolean, reasons: string[]) => void
   onError?: (error: unknown) => void
 }
 
@@ -40,14 +51,14 @@ export class SceneHost {
   private lastReportAt = 0
 
   private readonly canvas: HTMLCanvasElement
-  private readonly onThrottleChange: ((throttled: boolean) => void) | undefined
+  private readonly onThrottleChange: ((throttled: boolean, reasons: string[]) => void) | undefined
 
   private constructor(
     canvas: HTMLCanvasElement,
     renderer: WebGPURenderer,
     backend: Backend,
     forcedWebGL: boolean,
-    onThrottleChange?: (throttled: boolean) => void,
+    onThrottleChange?: (throttled: boolean, reasons: string[]) => void,
   ) {
     this.canvas = canvas
     this.renderer = renderer
@@ -98,8 +109,8 @@ export class SceneHost {
     const after = this.throttleReasons.size > 0
     if (before !== after) {
       this.throttled = after
-      this.renderer.setPixelRatio(pixelRatioFor(globalThis.devicePixelRatio ?? 1, after))
-      this.onThrottleChange?.(after)
+      this.renderer.setPixelRatio(pixelRatioFor(globalThis.devicePixelRatio ?? 1, this.targetFps() <= 8))
+      this.onThrottleChange?.(after, [...this.throttleReasons])
     }
   }
 
@@ -111,10 +122,20 @@ export class SceneHost {
     return [...this.throttleReasons]
   }
 
+  /** The slowest rate any active reason asks for. */
+  private targetFps(): number {
+    if (this.throttleReasons.size === 0) return FULL_FPS
+    let slowest = FULL_FPS
+    for (const reason of this.throttleReasons) {
+      slowest = Math.min(slowest, THROTTLED_FPS[reason] ?? DEFAULT_THROTTLED_FPS)
+    }
+    return slowest
+  }
+
   resize(): void {
     const width = this.canvas.clientWidth || this.canvas.width || 1
     const height = this.canvas.clientHeight || this.canvas.height || 1
-    this.renderer.setPixelRatio(pixelRatioFor(globalThis.devicePixelRatio ?? 1, this.throttled))
+    this.renderer.setPixelRatio(pixelRatioFor(globalThis.devicePixelRatio ?? 1, this.targetFps() <= 8))
     this.renderer.setSize(width, height, false)
     this.world?.resize(width, height)
   }
@@ -130,7 +151,7 @@ export class SceneHost {
     const world = this.world
     if (world === null) return
 
-    const minimumInterval = 1000 / (this.throttled ? THROTTLED_FPS : FULL_FPS)
+    const minimumInterval = 1000 / this.targetFps()
     const sinceLast = time - this.lastFrameAt
     if (sinceLast < minimumInterval - 1) return
 

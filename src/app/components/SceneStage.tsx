@@ -12,7 +12,8 @@ export type StageMode = 'sea' | 'globe'
 export interface SceneStageProps {
   mode: StageMode
   forceWebGL: boolean
-  forceThrottled: boolean
+  /** Throttle reasons the page knows about; the tab's own visibility is handled here. */
+  throttle: { requested: boolean; battery: boolean }
   motionScale: number
   /** Incremented by the reset control; any change returns the sea camera to the default framing. */
   resetSignal: number
@@ -29,7 +30,7 @@ export interface SceneStageProps {
   onSelectStation?: (station: Station) => void
 
   onBackend?: (backend: Backend, forced: boolean) => void
-  onThrottleChange?: (throttled: boolean) => void
+  onThrottleChange?: (throttled: boolean, reasons: string[]) => void
   onError?: (error: unknown) => void
 }
 
@@ -75,7 +76,7 @@ export function SceneStage(props: SceneStageProps) {
         const host = await SceneHost.create({
           canvas,
           forceWebGL: props.forceWebGL,
-          onThrottleChange: (throttled) => latest.current.onThrottleChange?.(throttled),
+          onThrottleChange: (throttled, reasons) => latest.current.onThrottleChange?.(throttled, reasons),
         })
         if (cancelled) {
           host.dispose()
@@ -89,7 +90,8 @@ export function SceneStage(props: SceneStageProps) {
         // hidden tab, a requested throttle — has to be applied rather than
         // waited for.
         host.setThrottleReason('hidden', document.hidden)
-        host.setThrottleReason('requested', latest.current.forceThrottled)
+        host.setThrottleReason('requested', latest.current.throttle.requested)
+        host.setThrottleReason('battery', latest.current.throttle.battery)
         if (!cancelled) setReady(true)
       } catch (error) {
         if (!cancelled) latest.current.onError?.(error)
@@ -166,8 +168,12 @@ export function SceneStage(props: SceneStageProps) {
   }, [props.resetSignal])
 
   useEffect(() => {
-    hostRef.current?.setThrottleReason('requested', props.forceThrottled)
-  }, [props.forceThrottled])
+    hostRef.current?.setThrottleReason('requested', props.throttle.requested)
+  }, [props.throttle.requested])
+
+  useEffect(() => {
+    hostRef.current?.setThrottleReason('battery', props.throttle.battery)
+  }, [props.throttle.battery])
 
   // Throttle hard when the tab is hidden. Continuous GPU rendering is what
   // flattens a laptop battery, so this is a requirement rather than a polish.

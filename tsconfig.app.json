@@ -18,5 +18,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src/app", "src/scene", "src/audio", "src/lib", "src/types", "tests/unit"]
+  "include": ["src/app", "src/scene", "src/audio", "src/lib", "src/types", "tests/unit", "src/worker/rate-limit.ts", "src/worker/ndbc", "src/worker/validate.ts"]
 }

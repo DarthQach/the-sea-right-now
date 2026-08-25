@@ -33,7 +33,20 @@ export function useReading(stationId: string | null, simulateOutage: boolean): R
   const [attempt, setAttempt] = useState(0)
   const lastReading = useRef<Reading | null>(null)
 
+  /**
+   * `?simulateOutage=1` exists so the data-problem banner can be reached on
+   * demand rather than by waiting for NOAA to have a bad day.
+   *
+   * It arms a single real failure: the station loads normally, then the next
+   * fetch throws before any request is made, and the retry succeeds. That is the
+   * whole arc — populated, unreachable, recovered — walked with real data at
+   * both ends. It never substitutes a fabricated reading; there is no mock
+   * reading anywhere in this project.
+   */
+  const outageArmed = useRef(simulateOutage)
+
   const retry = useCallback(() => {
+    outageArmed.current = false
     setRetrying(true)
     setAttempt((n) => n + 1)
   }, [])
@@ -61,9 +74,11 @@ export function useReading(stationId: string | null, simulateOutage: boolean): R
 
     const load = async () => {
       try {
+        const failNow = outageArmed.current && lastReading.current !== null
+        if (failNow) outageArmed.current = false
         const result: ReadingResult = await fetchReading(stationId, {
           signal: controller.signal,
-          simulateOutage,
+          simulateOutage: failNow,
         })
         if (cancelled) return
         setRetrying(false)
@@ -103,7 +118,11 @@ export function useReading(stationId: string | null, simulateOutage: boolean): R
       }
     }
 
-    void load()
+    void load().then(() => {
+      // Walk straight into the induced failure rather than waiting five minutes
+      // for the next refresh.
+      if (!cancelled && outageArmed.current && lastReading.current !== null) void load()
+    })
     const timer = setInterval(() => void load(), REFRESH_INTERVAL_MS)
 
     return () => {
@@ -111,7 +130,7 @@ export function useReading(stationId: string | null, simulateOutage: boolean): R
       controller.abort()
       clearInterval(timer)
     }
-  }, [stationId, simulateOutage, attempt])
+  }, [stationId, attempt])
 
   return { status, reading, staleForSeconds, retrying, retry }
 }

@@ -8,6 +8,7 @@ import { AudioControls } from '../components/AudioControls'
 import type { AudioState } from '../hooks/useAudio'
 import type { AudioMode } from '../../lib/url-state'
 import { Star } from '../components/StationsPanel'
+import { ThrottleMarker } from '../components/Notices'
 
 export interface SeaChromeProps {
   stationId: string
@@ -23,6 +24,11 @@ export interface SeaChromeProps {
   onResetCamera: () => void
   onOpenGlobe: () => void
   onOpenSearch: () => void
+  onOpenSettings: () => void
+  chromeHidden: boolean
+  onToggleChrome: () => void
+  onOpenAbout: () => void
+  throttleReasons: string[]
   favourited: boolean
   onToggleFavourite: () => void
   onCopyLink: () => void
@@ -126,6 +132,35 @@ export function SeaChrome(props: SeaChromeProps) {
             <button
               type="button"
               className="control control--icon"
+              onClick={props.onOpenSettings}
+              title="Settings"
+              aria-label="Settings"
+              data-testid="open-settings"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M12 3v2.2M12 18.8V21M4.2 7.5l1.9 1.1M17.9 15.4l1.9 1.1M4.2 16.5l1.9-1.1M17.9 8.6l1.9-1.1" />
+              </svg>
+            </button>
+
+            <button
+              type="button"
+              className="control control--icon"
+              onClick={props.onToggleChrome}
+              aria-pressed={props.chromeHidden}
+              title={props.chromeHidden ? 'Show the interface' : 'Hide the interface — Escape brings it back'}
+              aria-label={props.chromeHidden ? 'Show the interface' : 'Hide the interface'}
+              data-testid="hide-chrome"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6-10-6-10-6z" />
+                {props.chromeHidden ? <circle cx="12" cy="12" r="2.5" /> : <path d="M4 4l16 16" />}
+              </svg>
+            </button>
+
+            <button
+              type="button"
+              className="control control--icon"
               onClick={props.onResetCamera}
               title="Reset the camera to the default framing"
               aria-label="Reset the camera to the default framing"
@@ -139,6 +174,12 @@ export function SeaChrome(props: SeaChromeProps) {
               </svg>
             </button>
           </div>
+
+          <ThrottleMarker reasons={props.throttleReasons} />
+
+          <button type="button" className="attribution" onClick={props.onOpenAbout} data-testid="open-about">
+            NOAA NDBC
+          </button>
 
           {/* A quiet inline confirmation, never a full-width banner. */}
           {props.copyState === 'idle' ? null : (
