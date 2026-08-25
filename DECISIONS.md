@@ -129,3 +129,29 @@ station, not a placeholder.
 **The first sea-state transition is 2.5 seconds; later ones are 8.** Readings land
 tens of minutes apart and should ease, but the product promises real,
 reading-driven water within about three seconds of a cold load.
+
+---
+
+## Milestone 3 — journey 2: hear it
+
+**Preferences are read synchronously on the first render, not in an effect.**
+Reading them in an effect meant the audio graph was built from the defaults and
+the stored volume never took, which the journey-2 exit check caught. `loadPrefs`
+is fully guarded, so a private window or disabled site data still yields defaults
+rather than throwing during render.
+
+**The audio output is tapped with an `AnalyserNode` and its RMS published as
+`data-audio-level`.** It turns "an audio graph exists" into "sound is actually
+being generated", which is a much stronger thing for a journey test to assert,
+and it is real state rather than a test hook. Measured in a real browser: silent
+before the first click, 0.089 in the literal mapping, 0.033 in the tuned one, and
+silent again after a reload.
+
+**Noise is generated deterministically, not with `Math.random`.** The same
+reading sounds the same on every visit and to every visitor, which is the same
+promise the water makes.
+
+**Both mappings are rebuilt rather than reconfigured when the mapping changes.**
+They are genuinely different graphs. The master gain stays where it is and the
+outgoing graph is disconnected then disposed after its fade, so switching has no
+gap in it.

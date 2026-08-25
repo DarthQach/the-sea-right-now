@@ -9,12 +9,19 @@ import { Readout, readoutValues } from '../components/Readout'
 import { SpectrumPlot } from '../components/SpectrumPlot'
 import { useReading } from '../hooks/useReading'
 import { useNow } from '../hooks/useNow'
+import { useAudio } from '../hooks/useAudio'
+import { AudioControls } from '../components/AudioControls'
+import type { Prefs } from '../../lib/storage'
+import type { AudioMode } from '../../lib/url-state'
 import type { Backend } from '../../scene/renderer'
 
 export interface SeaViewProps {
   stationId: string
   station: Station | undefined
   urlState: UrlState
+  prefs: Prefs
+  onPrefs: (patch: Partial<Prefs>) => void
+  onAudioMode: (mode: AudioMode) => void
 }
 
 /**
@@ -23,7 +30,7 @@ export interface SeaViewProps {
  * A full-frame ocean whose spectrum comes from this station's live reading, with
  * the numbers it was built from sitting quietly in the corners.
  */
-export function SeaView({ stationId, station, urlState }: SeaViewProps) {
+export function SeaView({ stationId, station, urlState, prefs, onPrefs, onAudioMode }: SeaViewProps) {
   const { status, reading, staleForSeconds, retrying, retry } = useReading(stationId, urlState.simulateOutage)
   const now = useNow()
   const [resetSignal, setResetSignal] = useState(0)
@@ -38,6 +45,14 @@ export function SeaView({ stationId, station, urlState }: SeaViewProps) {
   const ageSeconds = ageSecondsSince(reading?.observedAt ?? null, now)
   const values = readoutValues(reading)
 
+  // The URL wins over the stored preference, so a shared link that names a
+  // mapping opens in that mapping.
+  const initialAudio = useMemo(
+    () => ({ mode: urlState.audioMode ?? prefs.audioMode, volume: prefs.volume, muted: prefs.muted }),
+    [urlState.audioMode, prefs.audioMode, prefs.volume, prefs.muted],
+  )
+  const audio = useAudio(params, initialAudio)
+
   useEffect(() => {
     document.title = station === undefined ? 'The Sea, Right Now' : `${station.name} — The Sea, Right Now`
   }, [station])
@@ -49,6 +64,11 @@ export function SeaView({ stationId, station, urlState }: SeaViewProps) {
       data-status={status}
       data-backend={backend ?? 'pending'}
       data-throttled={throttled ? 'true' : 'false'}
+      data-audio-playing={audio.state.playing ? 'true' : 'false'}
+      data-audio-mode={audio.state.mode}
+      data-audio-volume={audio.state.volume.toFixed(2)}
+      data-audio-context={audio.state.contextState ?? 'none'}
+      data-audio-level={audio.state.level.toFixed(4)}
     >
       <SceneCanvas
         params={params}
@@ -78,6 +98,23 @@ export function SeaView({ stationId, station, urlState }: SeaViewProps) {
 
         <div className="slot-bottom-right">
           <div className="controls">
+            <AudioControls
+              state={audio.state}
+              onToggle={audio.toggle}
+              onMode={(mode) => {
+                audio.setMode(mode)
+                onPrefs({ audioMode: mode })
+                onAudioMode(mode)
+              }}
+              onVolume={(volume) => {
+                audio.setVolume(volume)
+                onPrefs({ volume })
+              }}
+              onMuted={(muted) => {
+                audio.setMuted(muted)
+                onPrefs({ muted })
+              }}
+            />
             <div className="control-cluster">
               <button
                 type="button"
