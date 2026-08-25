@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Station } from '../lib/shared/types'
 import { deriveSpectrumParams, type SpectrumParams } from '../lib/spectrum'
 import { nearestReportingStation } from '../lib/geo'
@@ -58,6 +58,8 @@ export function App() {
   const [noticeDismissed, setNoticeDismissed] = useState(false)
   const [throttleReasons, setThrottleReasons] = useState<string[]>([])
   const [pointerAwake, setPointerAwake] = useState(false)
+  const noticesRef = useRef<HTMLDivElement>(null)
+  const appRef = useRef<HTMLDivElement>(null)
   const [forcedWebGL, setForcedWebGL] = useState(false)
   const favourites = useFavourites()
 
@@ -69,6 +71,24 @@ export function App() {
   useEffect(() => {
     document.documentElement.dataset.motion = prefs.motionOverride === 'auto' ? '' : prefs.motionOverride
   }, [prefs.motionOverride])
+
+  // Anything docked to the top edge — the data-problem banner, the
+  // reduced-capability notice — reserves its own height so it cannot land on the
+  // station name. On a phone the two are the same width and would otherwise sit
+  // exactly on top of each other.
+  useEffect(() => {
+    const notices = noticesRef.current
+    const app = appRef.current
+    if (notices === null || app === null) return
+    const apply = () => {
+      const height = notices.getBoundingClientRect().height
+      app.style.setProperty('--top-notice-height', `${Math.ceil(height)}px`)
+    }
+    const observer = new ResizeObserver(apply)
+    observer.observe(notices)
+    apply()
+    return () => observer.disconnect()
+  }, [])
 
   // With the interface hidden, pointer movement brings the readout back for a
   // moment and then lets it fade again.
@@ -202,6 +222,7 @@ export function App() {
 
   return (
     <div
+      ref={appRef}
       className="app"
       data-testid={mode === 'sea' ? 'sea-view' : 'globe-view'}
       data-mode={mode}
@@ -370,7 +391,7 @@ export function App() {
 
       {/* Everything that speaks up from the top edge, stacked so two of them
           can never land on top of each other. */}
-      <div className="top-notices" data-hidden={prefs.chromeHidden && !pointerAwake ? 'true' : 'false'}>
+      <div ref={noticesRef} className="top-notices" data-hidden={prefs.chromeHidden && !pointerAwake ? 'true' : 'false'}>
       {status === 'unavailable' ? (
           <div className="banner" role="status" data-testid="data-problem-banner">
             <span className="banner__mark" aria-hidden="true" />

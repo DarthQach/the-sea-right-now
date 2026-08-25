@@ -79,7 +79,11 @@
 html,
 body,
 #root {
+  /* iOS Safari resolves `height: 100%` against the *large* viewport — the one
+     without its toolbars — so the bottom of the page ends up behind them and the
+     readout is simply not there. `dvh` tracks what is actually visible. */
   height: 100%;
+  height: 100dvh;
   margin: 0;
   padding: 0;
 }
@@ -172,6 +176,9 @@ a {
   grid-template-rows: auto 1fr auto;
   gap: 16px;
   padding: 16px;
+  /* Whatever is docked to the top edge reserves its own height, so a notice can
+     never land on the station name. Set from a ResizeObserver in App. */
+  padding-top: calc(16px + var(--top-notice-height, 0px));
   transition: opacity var(--motion-slow) var(--ease);
 }
 
@@ -401,6 +408,10 @@ a {
 .value[data-source='absent'] .value__number {
   color: var(--text-faint);
   font-weight: 300;
+}
+
+.value__label-short {
+  display: none;
 }
 
 .value__glyph {
@@ -752,6 +763,7 @@ input[type='range']::-moz-range-thumb {
   .chrome {
     gap: 10px;
     padding: 10px;
+    padding-top: calc(10px + var(--top-notice-height, 0px));
     padding-bottom: max(10px, env(safe-area-inset-bottom));
     grid-template-columns: 1fr auto;
     grid-template-rows: auto 1fr auto;
@@ -783,15 +795,27 @@ input[type='range']::-moz-range-thumb {
     display: none;
   }
 
-  /* The labels are long and the columns are narrow, so let them wrap rather
-     than run into each other. Block rather than inline-flex, so the provenance
-     glyph flows with the last word instead of floating out of its column. */
+  /* Short labels rather than wrapped ones. A wrapped label drags the provenance
+     glyph onto a second line and knocks that column's number out of line with
+     the others; "Period" says the same thing in one line. The full wording stays
+     in the DOM for anyone reading this with a screen reader. */
   .value__label {
     display: block;
-    white-space: normal;
-    font-size: 9.5px;
-    letter-spacing: 0.06em;
-    line-height: 1.35;
+    white-space: nowrap;
+    font-size: 10px;
+    letter-spacing: 0.07em;
+  }
+
+  .value__label-full {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .value__label-short {
+    display: inline;
   }
 
   .value__glyph {

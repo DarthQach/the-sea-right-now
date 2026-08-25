@@ -43,11 +43,20 @@ export function createRadialGrid(options: RadialGridOptions): BufferGeometry {
   const indices = new Uint32Array(triangleCount * 3)
   let out = 0
 
-  // Fan from the centre to the innermost ring.
+  // Every triangle is wound so that its face points up.
+  //
+  // This is not cosmetic. The surface is drawn with the renderer's default
+  // back-face culling, and the obvious winding here — centre, spoke, next spoke —
+  // produces downward-facing triangles, which means the entire ocean is culled
+  // and what you see is the sky dome behind it. It looks almost right, because
+  // the sky is the colour the water would mostly reflect anyway; the give-away
+  // is that the sea has no texture except where the surface folds far enough to
+  // flip a triangle over. `tests/unit/ocean-grid.test.ts` exists to catch this.
   for (let spoke = 0; spoke < angularSegments; spoke += 1) {
+    const next = (spoke + 1) % angularSegments
     indices[out++] = 0
+    indices[out++] = 1 + next
     indices[out++] = 1 + spoke
-    indices[out++] = 1 + ((spoke + 1) % angularSegments)
   }
 
   // Quads between successive rings.
@@ -57,12 +66,12 @@ export function createRadialGrid(options: RadialGridOptions): BufferGeometry {
     for (let spoke = 0; spoke < angularSegments; spoke += 1) {
       const next = (spoke + 1) % angularSegments
       indices[out++] = inner + spoke
-      indices[out++] = outer + spoke
       indices[out++] = outer + next
+      indices[out++] = outer + spoke
 
       indices[out++] = inner + spoke
-      indices[out++] = outer + next
       indices[out++] = inner + next
+      indices[out++] = outer + next
     }
   }
 

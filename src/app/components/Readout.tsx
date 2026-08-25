@@ -16,6 +16,8 @@ import { EM_DASH, formatNumber, formatObservedAt, metresPerSecondToKnots } from 
 export interface ReadoutValue {
   key: string
   label: string
+  /** For narrow screens, where the full label wraps and drags the glyph with it. */
+  shortLabel: string
   /** Already formatted. `EM_DASH` when absent. */
   display: string
   unit: string | null
@@ -28,12 +30,13 @@ function valueOf(
   reading: Reading | null,
   key: keyof Reading & string,
   label: string,
+  shortLabel: string,
   unit: string,
   decimals: number,
   transform: (value: number) => number = (value) => value,
 ): ReadoutValue {
   if (reading === null) {
-    return { key, label, display: EM_DASH, unit: null, source: 'absent', note: null }
+    return { key, label, shortLabel, display: EM_DASH, unit: null, source: 'absent', note: null }
   }
 
   const raw = reading[key]
@@ -43,6 +46,7 @@ function valueOf(
     return {
       key,
       label,
+      shortLabel,
       display: EM_DASH,
       unit: null,
       source: 'absent',
@@ -54,6 +58,7 @@ function valueOf(
   return {
     key,
     label,
+    shortLabel,
     display: formatNumber(transform(raw), decimals),
     unit,
     source,
@@ -66,10 +71,10 @@ function valueOf(
 
 export function readoutValues(reading: Reading | null): ReadoutValue[] {
   return [
-    valueOf(reading, 'waveHeightM', 'Wave height', 'm', 1),
-    valueOf(reading, 'dominantPeriodS', 'Dominant period', 's', 0),
-    valueOf(reading, 'windSpeedMs', 'Wind', 'kt', 1, metresPerSecondToKnots),
-    valueOf(reading, 'waterTempC', 'Water', '°C', 1),
+    valueOf(reading, 'waveHeightM', 'Wave height', 'Wave', 'm', 1),
+    valueOf(reading, 'dominantPeriodS', 'Dominant period', 'Period', 's', 0),
+    valueOf(reading, 'windSpeedMs', 'Wind', 'Wind', 'kt', 1, metresPerSecondToKnots),
+    valueOf(reading, 'waterTempC', 'Water', 'Water', '°C', 1),
   ]
 }
 
@@ -81,7 +86,10 @@ export function Readout({ values, children }: { values: ReadoutValue[]; children
         {values.map((value) => (
           <div className="value" key={value.key} data-source={value.source} data-testid={`value-${value.key}`}>
             <span className="value__label">
-              {value.label}
+              <span className="value__label-full">{value.label}</span>
+              <span className="value__label-short" aria-hidden="true">
+                {value.shortLabel}
+              </span>
               {value.source === 'derived' ? (
                 <span className="value__glyph" aria-hidden="true" title={value.note ?? undefined}>
                   ≈

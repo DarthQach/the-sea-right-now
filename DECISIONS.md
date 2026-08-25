@@ -275,3 +275,52 @@ first CI failure looked like a bug and was not: the trace showed a perfectly
 rendered page with real readout values, reached slowly. CI also runs one
 Playwright worker rather than two, because two software-rasterised pages on two
 cores are each slower than one.
+
+---
+
+## After the build — what was actually wrong on iPhone
+
+**The ocean was being back-face culled, and had been all along.** The radial grid
+wound every triangle so its face pointed downward, so the renderer's default
+culling discarded the entire sea and left the sky dome showing through it. It was
+convincing enough to survive the whole build: the sky is roughly the colour the
+water reflects, so the frame looked like a very calm, very dark sea. The
+give-away was that the surface had no texture anywhere except in the sun's glint,
+where the displaced surface folds steeply enough to turn triangles over.
+
+Found by sampling the rendered frame's brightness down the screen and noticing
+that below the horizon three independent debug channels were frozen at exactly
+`#31445c` — the sky's own horizon colour. `tests/unit/ocean-grid.test.ts` is the
+regression test, written failing first against the old winding.
+
+**The sky's brightness is concentrated into a band a few degrees above the
+horizon.** This is the other half of the same problem. A wave face on a calm sea
+tilts the reflected ray by two or three degrees; if the sky changes slowly with
+elevation, that ray lands on almost the same colour and the surface reads as one
+flat sheet. Concentrating the contrast near the horizon is what turns a few
+degrees of wave slope into something you can see, and it is how the sky over a
+real sea looks.
+
+**`height: 100%` is not the visible height on iOS Safari.** It resolves against
+the *large* viewport — the one without the browser's toolbars — so the bottom of
+the page, including the whole readout, sat behind them. `100dvh` tracks what is
+actually visible.
+
+**The field of view now adapts to the shape of the window.** A fixed 50° vertical
+angle gives a portrait phone about 30° horizontally, which is too narrow a slice
+for a wave to read as a wave; and the fixed camera height put the horizon at the
+middle of the frame rather than the upper third. Both are derived from the aspect
+ratio now: the horizontal angle never falls below 46°, and the camera's height is
+computed so the horizon lands a third of the way down on every screen. The globe
+does the same, because at a fixed angle it was cropped off the sides of a phone —
+and the pins that fell off the edge were exactly the ones someone was looking for.
+
+**Anything docked to the top edge reserves its own height.** On a phone the
+reduced-capability notice and the station name are the same width and landed
+exactly on top of each other. A `ResizeObserver` publishes the notice stack's
+height and the interface pads itself down by that much.
+
+**Readout labels shorten on narrow screens.** "Dominant period" wrapped to two
+lines and dragged the provenance glyph onto the second, knocking that column's
+number out of line with the others. "Period" says the same thing in one line; the
+full wording stays in the DOM for screen readers.

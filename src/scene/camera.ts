@@ -8,18 +8,51 @@
 import { PerspectiveCamera, Vector3 } from 'three/webgpu'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 
-export const DEFAULT_POSITION = new Vector3(0, 2.05, 14)
 export const DEFAULT_TARGET = new Vector3(0, 0, 0)
+/** How far out the default framing sits. Low and near the water. */
+export const DEFAULT_DISTANCE = 14
+/** Where the horizon belongs: a third of the way down from the top edge. */
+export const HORIZON_FRACTION = 1 / 3
 export const FIELD_OF_VIEW = 50
 
 /**
- * Low on the surface and close to it: 2 m above mean sea level, 14 m out. That
- * pitches the camera about 8.3° down, and with a 50° vertical field of view it
- * places the horizon a third of the way down from the top edge.
+ * The narrowest slice of sea worth showing, horizontally.
+ *
+ * A fixed vertical field of view means a portrait phone sees barely thirty
+ * degrees across, which turns the ocean into a wall of one colour — you cannot
+ * see enough of it for a wave to read as a wave. Widening the vertical angle
+ * until the horizontal one clears this keeps the horizon where the design wants
+ * it and gives the water somewhere to happen.
  */
+export const MIN_HORIZONTAL_FOV = 46
+/** Past this the edges distort more than the extra width is worth. */
+const MAX_VERTICAL_FOV = 82
+
+export function verticalFovFor(aspect: number): number {
+  if (!Number.isFinite(aspect) || aspect <= 0) return FIELD_OF_VIEW
+  const halfHorizontal = (MIN_HORIZONTAL_FOV / 2) * (Math.PI / 180)
+  const needed = 2 * Math.atan(Math.tan(halfHorizontal) / aspect) * (180 / Math.PI)
+  return Math.min(MAX_VERTICAL_FOV, Math.max(FIELD_OF_VIEW, needed))
+}
+
+/**
+ * The default framing: low on the surface, close to it, horizon a third of the
+ * way down.
+ *
+ * The camera's height is derived from the field of view rather than fixed, so
+ * the horizon lands in the same place on every shape of screen. A fixed height
+ * put it dead centre on a portrait phone — which is not the shot, and which
+ * hides most of the water by looking straight along it instead of over it.
+ */
+export function defaultCameraPosition(aspect: number, into = new Vector3()): Vector3 {
+  const halfFov = (verticalFovFor(aspect) / 2) * (Math.PI / 180)
+  const pitch = halfFov * 2 * (0.5 - HORIZON_FRACTION)
+  return into.set(0, DEFAULT_DISTANCE * Math.tan(pitch), DEFAULT_DISTANCE)
+}
+
 export function createCamera(aspect: number): PerspectiveCamera {
-  const camera = new PerspectiveCamera(FIELD_OF_VIEW, aspect, 0.1, 20000)
-  camera.position.copy(DEFAULT_POSITION)
+  const camera = new PerspectiveCamera(verticalFovFor(aspect), aspect, 0.1, 20000)
+  camera.position.copy(defaultCameraPosition(aspect))
   camera.lookAt(DEFAULT_TARGET)
   return camera
 }
@@ -63,7 +96,7 @@ export function resetCamera(camera: PerspectiveCamera, controls: OrbitControls):
   controls.enableDamping = false
   controls.update()
 
-  camera.position.copy(DEFAULT_POSITION)
+  defaultCameraPosition(camera.aspect, camera.position)
   controls.target.copy(DEFAULT_TARGET)
   controls.update()
 

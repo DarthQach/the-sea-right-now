@@ -30,6 +30,22 @@ export interface GlobeWorldOptions {
   onSelect?: (station: Station) => void
 }
 
+/**
+ * The globe has to fit the frame in both directions. A fixed vertical field of
+ * view crops it off the sides of a portrait phone, which is worse than showing
+ * it small: the pins that fall off the edge are exactly the ones someone is
+ * looking for.
+ */
+const GLOBE_FOV = 38
+
+function globeFovFor(aspect: number): number {
+  if (!Number.isFinite(aspect) || aspect <= 0) return GLOBE_FOV
+  if (aspect >= 1) return GLOBE_FOV
+  const halfVertical = (GLOBE_FOV / 2) * (Math.PI / 180)
+  // Keep the horizontal angle at what the vertical one gives in landscape.
+  return Math.min(72, 2 * Math.atan(Math.tan(halfVertical) / aspect) * (180 / Math.PI))
+}
+
 /** Where the light comes from. Not a real sun position; a legible one. */
 const SUN = { x: 0.55, y: 0.42, z: 0.72 }
 
@@ -59,7 +75,7 @@ export class GlobeWorld implements World {
     this.stations = options.stations
     this.element = options.element
 
-    this.camera = new PerspectiveCamera(38, options.aspect, 0.05, 60)
+    this.camera = new PerspectiveCamera(globeFovFor(options.aspect), options.aspect, 0.05, 60)
     this.camera.position.set(-2.6, 1.25, 2.9)
 
     this.controls = new OrbitControls(this.camera, options.element)
@@ -115,6 +131,7 @@ export class GlobeWorld implements World {
   resize(width: number, height: number): void {
     this.viewport = { width, height }
     this.camera.aspect = width / Math.max(1, height)
+    this.camera.fov = globeFovFor(this.camera.aspect)
     this.camera.updateProjectionMatrix()
   }
 

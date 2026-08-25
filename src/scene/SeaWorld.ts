@@ -4,14 +4,14 @@
  * This is the hero of the product. Everything here exists to keep the water
  * filling the frame and behaving like the reading says it should.
  */
-import { Scene, type PerspectiveCamera, type WebGPURenderer } from 'three/webgpu'
+import { Scene, Vector3, type PerspectiveCamera, type WebGPURenderer } from 'three/webgpu'
 import type { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { CALM_SEA, type SpectrumParams } from '../lib/spectrum'
 import type { World } from './World'
 import type { Ocean } from './ocean/types'
 import { GerstnerOcean } from './ocean/gerstner'
 import { FftOcean, fftSupported } from './ocean/fft'
-import { clampTarget, createCamera, createControls, resetCamera } from './camera'
+import { clampTarget, createCamera, createControls, defaultCameraPosition, resetCamera, verticalFovFor } from './camera'
 import { createSky } from './sky'
 import type { Backend } from './renderer'
 
@@ -30,6 +30,7 @@ export class SeaWorld implements World {
   private readonly controls: OrbitControls
   private params: SpectrumParams = CALM_SEA
   private motionScale = 1
+  private readonly scratch = new Vector3()
 
   constructor(options: SeaWorldOptions) {
     this.camera = createCamera(options.aspect)
@@ -65,8 +66,19 @@ export class SeaWorld implements World {
   }
 
   resize(width: number, height: number): void {
-    this.camera.aspect = width / Math.max(1, height)
+    const aspect = width / Math.max(1, height)
+    const wasDefault = this.isAtDefaultFraming()
+    this.camera.aspect = aspect
+    this.camera.fov = verticalFovFor(aspect)
     this.camera.updateProjectionMatrix()
+    // A camera nobody has touched follows the new shape of the window. One that
+    // has been moved stays where it was put.
+    if (wasDefault) this.resetCamera()
+  }
+
+  private isAtDefaultFraming(): boolean {
+    const expected = defaultCameraPosition(this.camera.aspect, this.scratch)
+    return this.camera.position.distanceTo(expected) < 0.01 && this.controls.target.lengthSq() < 0.01
   }
 
   update(elapsedSeconds: number, deltaSeconds: number): void {

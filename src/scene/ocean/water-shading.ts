@@ -9,17 +9,17 @@
  */
 import { Color, Vector3 } from 'three/webgpu'
 import {
-  Fn, clamp, dot, float, max, mix, normalize, pow, reflect, smoothstep, sub, vec3,
+  Fn, clamp, dot, exp, float, max, mix, normalize, pow, reflect, smoothstep, sub, vec3,
 } from 'three/tsl'
 import type { Float, Vec3 } from '../tsl'
 
 /** Deep water, seen from above with no sky in it. */
 export const DEEP_WATER = new Color('#06131e')
 /** The colour light takes on its way through a wave crest. */
-export const SCATTER_WATER = new Color('#16505c')
+export const SCATTER_WATER = new Color('#123f4c')
 export const FOAM_COLOUR = new Color('#dfe8ee')
 /** Horizon sky. The scene is dark by design — panels sit over this. */
-export const SKY_HORIZON = new Color('#3d5570')
+export const SKY_HORIZON = new Color('#31445c')
 export const SKY_ZENITH = new Color('#0a1420')
 export const SUN_COLOUR = new Color('#ffd9a8')
 
@@ -27,11 +27,23 @@ export const SUN_DIRECTION = new Vector3(0.35, 0.22, -0.91).normalize()
 
 /** The sky a reflected ray sees. Also used for the dome and the fog colour. */
 export const skyColour = /*@__PURE__*/ Fn(([direction]: [Vec3]) => {
-  const up = clamp(direction.y.mul(0.5).add(0.5), 0, 1)
-  // A steep gradient just above the horizon, flattening toward the zenith. This
-  // is what gives a wave face its shading: tilting by a few degrees swings the
-  // reflected ray through a part of the sky that is changing fast.
-  const base = mix(vec3(SKY_HORIZON.r, SKY_HORIZON.g, SKY_HORIZON.b), vec3(SKY_ZENITH.r, SKY_ZENITH.g, SKY_ZENITH.b), pow(up, float(0.35)))
+  // A bright band hugging the horizon, falling away quickly with elevation, and
+  // this is the single most important thing in the whole shading model.
+  //
+  // A wave face on a calm sea tilts the reflected ray by only a few degrees. If
+  // the sky changes slowly with elevation, that ray lands on almost the same
+  // colour and the surface reads as one flat sheet — which is exactly what this
+  // looked like before, everywhere except the sun's glint. Concentrating the
+  // sky's contrast into the first few degrees above the horizon is what turns a
+  // few degrees of wave slope into a visible change, and it is also how the sky
+  // over a real sea actually looks.
+  const elevation = clamp(direction.y, -1, 1)
+  const band = exp(max(elevation, float(0)).mul(-9))
+  const base = mix(
+    vec3(SKY_ZENITH.r, SKY_ZENITH.g, SKY_ZENITH.b),
+    vec3(SKY_HORIZON.r, SKY_HORIZON.g, SKY_HORIZON.b),
+    band,
+  )
 
   // The sun, as a tight disc plus a wide, very faint halo. The exponents look
   // extreme because the frame is written in linear light and encoded to sRGB on
@@ -69,7 +81,7 @@ export const shadeWater = /*@__PURE__*/ Fn(
     // Light scattering up through a crest: brighter where the water stands
     // high and where you are looking along the wave rather than down at it.
     const crest = smoothstep(float(0), float(1.6), height)
-    const scatter = vec3(SCATTER_WATER.r, SCATTER_WATER.g, SCATTER_WATER.b).mul(crest.mul(0.85).add(0.05))
+    const scatter = vec3(SCATTER_WATER.r, SCATTER_WATER.g, SCATTER_WATER.b).mul(crest.mul(0.6).add(0.04))
 
     const body = vec3(DEEP_WATER.r, DEEP_WATER.g, DEEP_WATER.b).add(scatter)
     const water = mix(body, sky, clamp(fresnel.mul(1.15), 0, 1))
