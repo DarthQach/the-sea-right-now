@@ -56,10 +56,19 @@ jobs:
       - name: Build
         run: npm run build
 
+      # Credentials are GitHub Actions secrets. Never echoed, never written to
+      # the repository — see README.md. Until CLOUDFLARE_API_TOKEN is supplied,
+      # the deploy is skipped with a notice rather than failing the run; deploys
+      # then happen from a developer's authenticated Wrangler session.
       - name: Deploy
-        # Credentials are GitHub Actions secrets. Never echoed, never written to
-        # the repository — see README.md.
+        if: env.CLOUDFLARE_API_TOKEN != ''
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler deploy
+
+      - name: Deploy skipped
+        if: env.CLOUDFLARE_API_TOKEN == ''
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: echo "::notice::CLOUDFLARE_API_TOKEN is not set, so this push was not deployed. Add it under Settings > Secrets and variables > Actions."
